@@ -37,11 +37,11 @@ Here the informations needed to connect to the REST API of MISP
 misp_url = '<MISP URL HERE>'
 misp_key = '<MISP API KEY HERE>'
 
-# If MISP have a self-signed certificate keep it to false, otherwise set it to true 
+#If MISP have a self-signed certificate keep it to false, otherwise set it to true 
  misp_verifycert = False
  misp_client_cert = None
 
-# Here the other parameters
+#Here the other parameters
 misp_exclude_tags = ['APT']
 maxtime = '7300d' # 20 years
 mintime = '1095d' # 3 years

@@ -54,3 +54,10 @@ First release
 ## TODO:
 - More configuration parameters i guess;
 - Better error handling.
+
+## Video Example (IT)
+
+https://user-images.githubusercontent.com/47757757/152594113-db97c724-363e-4ec9-8a8e-b3ac4c6c75db.mp4
+
+
+

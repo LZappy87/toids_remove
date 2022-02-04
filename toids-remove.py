@@ -50,11 +50,11 @@
 # First release
 # v 1.1 (04/02/2022):
 # - Removed old search string (it was not getting all the attributes);
-# - Added discrimination between events with a certain tag, in this case "APT" through build_complex_query (thanks Giuseppe for the idea);
+# - Added filtering based on event tags through build_complex_query (thanks Giuseppe for the idea);
 # - Various code revamp (not necessary linked to the aforemended changes);
 # - Moved misp_client_cert to keys.py;
 # - Added: misp_excluded_tags (for tag exclusion), mintime and maxtime (for time reference regarding the query on MISP) on keys.py;
-# - Added various, basilar, error handling;
+# - Added basic error handling;
 # - Added the creation of a default 'keys.py' if not present.
 ################################
 # TODO:

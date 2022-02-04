@@ -26,25 +26,6 @@
 # 
 # An idea developed from this article: https://www.vanimpe.eu/2019/09/24/tracking-false-positives-and-disabling-to_ids-in-misp/
 ################################
-# /!\ USE THE BELOW TEMPLATE TO GENERATE THE "keys.py" FILE /!\
-################################
-# #!/usr/bin/env python
-#
-# Here the informations needed to connect to the MISP Rest API
-# misp_url = '<MISP URL HERE>'
-# misp_key = '<MISP API KEY HERE>'
-#
-#
-# If the MISP instance doesn't have a self-signed certificate keep it to false, otherwise set it to true 
-# and insert the path to the certificate on 'misp_client_cert'
-# misp_verifycert = False
-# misp_client_cert = None
-#
-# Here the other parameters
-# misp_exclude_tags = ['APT']
-# maxtime = '7300d' # 20 years
-# mintime = '1095d' # 3 years
-################################
 # CHANGELOG
 # v 1.0 (03/02/2022):
 # First release

@@ -12,12 +12,12 @@
 - toids-remove.py (this script)
 - keys.py (take it as a 'config file', auto-generated if not present)
 
-## TESTED WITH: 
+## TESTED WITH
 - MISP 2.4.152
 - PyMISP 2.4.152
 - Python 3.8.10
 
-## DESCRIPTION:
+## DESCRIPTION
 This script it's used to disable all 'to_ids' tags on selected MISP Events and then republish them
 the script is fully configurable through the keys.py file wich contains:
 

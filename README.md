@@ -37,9 +37,6 @@ mintime             | Minimum time for the misp.search (in days, ex: 365d)
 An idea developed from this article: https://www.vanimpe.eu/2019/09/24/tracking-false-positives-and-disabling-to_ids-in-misp/
 
 ## CHANGELOG
-### v 1.0 (03/02/2022):
-First release
-
 ### v 1.1 (04/02/2022):
 - Removed old search string (it was not getting all the attributes);
 - Added filtering based on event tags through build_complex_query (thanks Giuseppe for the idea);
@@ -48,6 +45,9 @@ First release
 - Added: misp_excluded_tags (for tag exclusion), mintime and maxtime (for time reference regarding the query on MISP) on keys.py;
 - Added basic error handling;
 - Added the creation of a default 'keys.py' if not present.
+
+### v 1.0 (03/02/2022):
+First release
 
 ## TODO:
 - More configuration parameters i guess;

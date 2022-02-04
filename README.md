@@ -35,8 +35,7 @@ maxtime						| Maximum time for the misp.search (in days, ex: 365d)
 
 mintime						| Minimum time for the misp.search (in days, ex: 365d)
 
-
-Used this as the base for the script https://www.vanimpe.eu/2019/09/24/tracking-false-positives-and-disabling-to_ids-in-misp/
+I've used this article as a base for the script https://www.vanimpe.eu/2019/09/24/tracking-false-positives-and-disabling-to_ids-in-misp/
 
 ## CHANGELOG
 ## v 1.0 (03/02/2022):

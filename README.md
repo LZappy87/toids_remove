@@ -38,10 +38,10 @@ mintime             | Minimum time for the misp.search (in days, ex: 365d)
 An idea developed from this article: https://www.vanimpe.eu/2019/09/24/tracking-false-positives-and-disabling-to_ids-in-misp/
 
 ## CHANGELOG
-## v 1.0 (03/02/2022):
+### v 1.0 (03/02/2022):
 First release
 
-## v 1.1 (04/02/2022):
+### v 1.1 (04/02/2022):
 - Removed old search string (it was not getting all the attributes);
 - Added discrimination between events with a certain tag, in this case "APT" through build_complex_query (thanks Giuseppe for the idea);
 - Various code revamp (not necessary linked to the aforemended changes);

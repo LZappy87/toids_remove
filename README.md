@@ -18,9 +18,7 @@
 - Python 3.8.10
 
 ## DESCRIPTION
-This script it's used to disable all 'to_ids' tags on selected MISP Events and then republish them
-
-the script is fully configurable through the keys.py file wich contains:
+This script it's used to disable all 'to_ids' tags on selected MISP Events and then republish them, this script is fully configurable through the keys.py file wich contains:
 
 misp_url            | URL of the MISP instance
 

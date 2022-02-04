@@ -23,7 +23,7 @@
 # misp_excluded_tags			| List of tags to exclude (need to be a list)
 # maxtime						| Maximum time for the misp.search (in days, ex: 365d)
 # mintime						| Minimum time for the misp.search (in days, ex: 365d)
-# Used this as a base for the script https://www.vanimpe.eu/2019/09/24/tracking-false-positives-and-disabling-to_ids-in-misp/
+# Used this as the base for the script https://www.vanimpe.eu/2019/09/24/tracking-false-positives-and-disabling-to_ids-in-misp/
 ################################
 # /!\ USE THE BELOW TEMPLATE TO GENERATE THE "keys.py" FILE /!\
 ################################

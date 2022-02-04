@@ -6,7 +6,7 @@
 
 ## CREATED ON: 03/02/2022
 
-## UPDATED ON: 04/02/2022 (v 1.1)
+## UPDATED ON: 04/02/2022
 
 ## FILES USED
 - toids-remove.py (this script)

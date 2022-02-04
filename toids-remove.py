@@ -15,7 +15,7 @@
 ################################
 # DESCRIPTION:
 # This script it's used to disable all 'to_ids' tags on selected MISP Events and then republish them
-# the script is fully configurable through the keys.py file wich contains:
+# fully configurable through the keys.py file wich contains:
 # misp_url 						| URL of the MISP instance
 # misp_key 						| The API key needed to access the Rest API
 # misp_verifycert					| If the MISP instance have a certificate (default: false)

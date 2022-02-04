@@ -21,21 +21,21 @@
 This script it's used to disable all 'to_ids' tags on selected MISP Events and then republish them
 the script is fully configurable through the keys.py file wich contains:
 
-misp_url 						| URL of the MISP instance
+misp_url            | URL of the MISP instance
 
-misp_key 						| The API key needed to access the Rest API
+misp_key            | The API key needed to access the Rest API
 
-misp_verifycert				| If the MISP instance have a certificate (default: false)
+misp_verifycert     | If the MISP instance have a certificate (default: false)
 
-misp_client_cert				| The path of the certificate (default: none)
+misp_client_cert    | The path of the certificate (default: none)
 
-misp_excluded_tags			| List of tags to exclude (need to be a list)
+misp_excluded_tags  | List of tags to exclude (need to be a list)
 
-maxtime						| Maximum time for the misp.search (in days, ex: 365d)
+maxtime             | Maximum time for the misp.search (in days, ex: 365d)
 
-mintime						| Minimum time for the misp.search (in days, ex: 365d)
+mintime             | Minimum time for the misp.search (in days, ex: 365d)
 
-I've used this article as a base for the script https://www.vanimpe.eu/2019/09/24/tracking-false-positives-and-disabling-to_ids-in-misp/
+An idea developed from this article: https://www.vanimpe.eu/2019/09/24/tracking-false-positives-and-disabling-to_ids-in-misp/
 
 ## CHANGELOG
 ## v 1.0 (03/02/2022):
@@ -52,6 +52,7 @@ First release
 
 ## TODO:
 - More configuration parameters i guess;
+- VTotal API implementation (for future functions);
 - Better error handling.
 
 ## Video Example (IT)

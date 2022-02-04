@@ -23,7 +23,6 @@
 # misp_excluded_tags					| List of tags to exclude (need to be a list)
 # maxtime						| Maximum time for the misp.search (in days, ex: 365d)
 # mintime						| Minimum time for the misp.search (in days, ex: 365d)
-# 
 # An idea developed from this article: https://www.vanimpe.eu/2019/09/24/tracking-false-positives-and-disabling-to_ids-in-misp/
 ################################
 # CHANGELOG

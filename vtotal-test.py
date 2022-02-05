@@ -29,6 +29,7 @@ if re.match("^(?:25[0-5]|2[0-4]\d|[0-1]?\d{1,2})(?:\.(?:25[0-5]|2[0-4]\d|[0-1]?\
     indtype = "IP"
 # URL
 elif re.match("^(http:\/\/|https:\/\/).+$", indicator):
+    # VirusTotal API accepts only encoded URL
     url_id = base64.urlsafe_b64encode(indicator.encode()).decode().strip("=")
     url = "https://www.virustotal.com/api/v3/urls/" + url_id
     indtype = "URL"

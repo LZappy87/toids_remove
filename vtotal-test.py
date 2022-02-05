@@ -3,7 +3,7 @@
 import requests
 # This is for the last update timestamp (specified in epoch into the request)
 import datetime
-# Needed for the URL report
+# Needed for the URL report part
 import base64
 # Regex to discern IP from URL
 import re

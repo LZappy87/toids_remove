@@ -51,7 +51,7 @@ First release
 
 ## TODO:
 - More configuration parameters i guess;
-- VTotal API implementation (for future functions);
+- Implement vtotal-test.py functions into the main script;
 - Better error handling.
 
 ## Video Example (IT)

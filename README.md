@@ -2,20 +2,22 @@
 
 ## CREATED BY: LZappy87
 
-## LAST VERSION: 1.1
+## LAST VERSION: 1.2
 
 ## CREATED ON: 03/02/2022
 
-## UPDATED ON: 04/02/2022
+## UPDATED ON: 05/02/2022
 
 ## FILES USED
 - toids-remove.py (this script)
+- vtotal-test.py (testing VirusTotal API Implementation)
 - keys.py (take it as a 'config file', auto-generated if not present)
 
 ## TESTED WITH
 - MISP 2.4.152
 - PyMISP 2.4.152
 - Python 3.8.10
+- VirusTotal APIv3
 
 ## DESCRIPTION
 This script it's used to disable all 'to_ids' tags on selected MISP Events and then republish them, fully configurable through the keys.py file wich contains:
@@ -36,7 +38,12 @@ mintime             | Minimum time for the misp.search (in days, ex: 365d)
 
 An idea developed from this article: https://www.vanimpe.eu/2019/09/24/tracking-false-positives-and-disabling-to_ids-in-misp/
 
+UPDATE: soon with VirusTotal implementation for further features
+
 ## CHANGELOG
+### v 1.2 (05/02/2022):
+- Preparing for VirusTotal API implementation
+
 ### v 1.1 (04/02/2022):
 - Removed old search string (it was not getting all the attributes);
 - Added filtering based on event tags through build_complex_query (thanks Giuseppe for the idea);

@@ -25,6 +25,9 @@ if re.match("^(?:25[0-5]|2[0-4]\d|[0-1]?\d{1,2})(?:\.(?:25[0-5]|2[0-4]\d|[0-1]?\
 elif re.match("^(http:\/\/|https:\/\/).+$", indicator):
 	url_id = base64.urlsafe_b64encode(indicator.encode()).decode().strip("=")
 	url = "https://www.virustotal.com/api/v3/urls/" + url_id
+# Domain
+elif re.match("^((?!-))(xn--)?[a-z0-9][a-z0-9-_]{0,61}[a-z0-9]{0,1}\.(xn--)?([a-z0-9\-]{1,61}|[a-z0-9-]{1,30}\.[a-z]{2,})$", indicator):
+	url = "https://www.virustotal.com/api/v3/domains/" + indicator
 # Invalid input
 else:
 	print("No valid indicator found, exiting...")

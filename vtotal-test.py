@@ -14,13 +14,13 @@ from keys import vtotal_key
 headers = {
     "Accept": "application/json",
     "x-apikey": vtotal_key
-
 }
 
 # This is for testing purpose
 indtype = ""
 
-# Request in input an indicator
+# Request to input an indicator
+# Accepted: IP\URL\Domain
 indicator = input("Please insert an indicator: ")
 
 # IP
@@ -50,18 +50,21 @@ jsonresp = response.json()
 # Response check
 httpresponse = str(response)
 
+# HTTP response 200: OK
 if "20" in httpresponse:
     print("Connection established, information downloaded!")
+# HTTP response 4xx\5xx: Error
+# Give back detailed informations about the error encountered
 else:
     print("No connection established")
     print("Error Type:", jsonresp['error']['code'])
-    print("Error Message: ", jsonresp['error']['message'])
+    print("Error Message:", jsonresp['error']['message'])
     quit()
 
-# Extracting last update
+# Extracting last update (datetime)
 lastmod = datetime.datetime.fromtimestamp(jsonresp['data']['attributes']['last_modification_date'])
 
-# Extracting stats
+# Extracting stats for every counter
 malicious = jsonresp['data']['attributes']['last_analysis_stats']['malicious']
 suspicious = jsonresp['data']['attributes']['last_analysis_stats']['suspicious']
 undetected = jsonresp['data']['attributes']['last_analysis_stats']['undetected']

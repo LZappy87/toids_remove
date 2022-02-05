@@ -59,7 +59,7 @@ import shutil
 # Yes, now with execution timer®
 import time
 
-# Function to suppress output (thank god to the one who done it)
+# Function to suppress output (many thanks to the one who done it)
 # https://stackoverflow.com/questions/2125702/how-to-suppress-console-output-in-python
 @contextmanager
 def suppress_stdout():
@@ -86,10 +86,10 @@ try:
 	from keys import misp_url, misp_key, misp_verifycert, misp_client_cert, misp_excluded_tags, mintime, maxtime, vtotal_key
 	print(f'Attempting to connect to the Rest API of {misp_url}...')
 	misp = ExpandedPyMISP(misp_url, misp_key, misp_verifycert, cert=misp_client_cert)
-	
-except ImportError:
 
-	# If the keys.py does not exist it generates it
+# Error Handling in case the script doesn't find any keys.py file
+# In this case the script generates a default file and end the script
+except ImportError:
 	print('No keys.py file exists, generating a default file...')
 	y = 0
 	f = open("keys.py","w+")
@@ -113,8 +113,7 @@ except ImportError:
 	'# VirusTotal APIv3 part',
 	'vtotal_key = \'<VIRUSTOTAL API KEY HERE>\''
 	]
-	
-	#Writing the file	
+		
 	for y in range(len(deffile)):
 		f.write(deffile[y])
 		f.write("\r\n")
@@ -123,9 +122,8 @@ except ImportError:
 	print('Default keys.py generated, please modify it with the needed informations, the script will now exit...')
 	quit()
 
-
+# Generic Exception Handling, as said this part will be revised with more precise error handling
 except Exception:
-	# For all the other problems, as i said this part will be revised with more precise error handling
 	print('There is a problem with the connection to MISP or the parameters in keys.py, the script will now exit...')
 	quit()
 		
@@ -140,17 +138,19 @@ try:
 	# This is for testing purpose, please use this string for production enviroment
 	# result = misp.search(controller='attributes', to_ids=True, tags=tagslist, timestamp=(maxtime, mintime))
 	result = misp.search(controller='attributes', to_ids=True, tags=tagslist)
-	
+
+# Generic Exception Handling, Same here, to be revised...
 except Exception:
-	# Same here, to be revised
 	print('Check if all the informations needed are into the keys.py file, the script will now exit...')
 	quit()
 
-# Disabling IDS attributes
+# Here begins the IDS removal part
 print('Removing IDS tags...')
+
 # Timer starts
 start_time = time.perf_counter()
 
+# Iterate attribute to find and disable the IDS tags
 for attribute in result['Attribute']:
 	i += 1
 	attribute_uuid = attribute['uuid']
@@ -164,7 +164,7 @@ for attribute in result['Attribute']:
 end_time = time.perf_counter()
 
 # Just for show and stats
-print(f'IDS Tags disabled successfully in {end_time - start_time:0.4f} seconds.')
+print(f'IDS Tags disabled successfully in {end_time - start_time:0.2f} seconds.')
 print('###############')
 print('Total Events modified:',len(event_id))
 print('Total IDS Attributes modified:',i)

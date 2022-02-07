@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 # MISP API Connection Parameters
 misp_url = '<MISP URL HERE>'

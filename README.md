@@ -2,16 +2,15 @@
 
 ## CREATED BY: LZappy87
 
-## LAST VERSION: 1.2
+## LAST VERSION: 1.3
 
 ## CREATED ON: 03/02/2022
 
-## UPDATED ON: 05/02/2022
+## UPDATED ON: 07/02/2022
 
 ## FILES USED
 - toids-remove.py (this script)
-- vtotal-test.py (testing VirusTotal API Implementation)
-- keys.py (take it as a 'config file', auto-generated if not present)
+- keys.py (the configuration file)
 
 ## TESTED WITH
 - MISP 2.4.152
@@ -20,27 +19,21 @@
 - VirusTotal APIv3
 
 ## DESCRIPTION
-This script it's used to disable all 'to_ids' tags on selected MISP Events and then republish them, fully configurable through the keys.py file wich contains:
-
-misp_url            | URL of the MISP instance
-
-misp_key            | The API key needed to access the Rest API
-
-misp_verifycert     | If the MISP instance have a certificate (default: false)
-
-misp_client_cert    | The path of the certificate (default: none)
-
-misp_excluded_tags  | List of tags to exclude (need to be a list)
-
-maxtime             | Maximum time for the misp.search (in days, ex: 365d)
-
-mintime             | Minimum time for the misp.search (in days, ex: 365d)
+This script it's used to disable the attribute 'to_ids' on MISP events based on two modes:
+- [--mode remold] Removing IDS tags from events older than the range passed with the arguments --mintime and --maxtime with the possibility to exclude some events based on tags (like APT);
+- [--mode vt] Removing IDS tags based on information gathered from selected vendors through the VirusTotal APIv3 in the time range specified with the arguments --mintime and --maxtime.
 
 An idea developed from this article: https://www.vanimpe.eu/2019/09/24/tracking-false-positives-and-disabling-to_ids-in-misp/
 
-UPDATE: soon with VirusTotal implementation for further features
-
 ## CHANGELOG
+### v 1.3 (07/02/2022):
+- Implemented VirusTotal Mode (vt);
+- Implemented Remove Old Mode (remold);
+- Included arguments to launch the script;
+- Moved some variables to keys.py for better configuration;
+- Included the 'published=True' search constraint (this should speed up the queries);
+- Overall revamp of the code.
+
 ### v 1.2 (05/02/2022):
 - Preparing for VirusTotal API implementation
 
@@ -57,8 +50,7 @@ UPDATE: soon with VirusTotal implementation for further features
 First release
 
 ## TODO:
-- More configuration parameters i guess;
-- Implement vtotal-test.py functions into the main script;
+- More configuration parameters;
 - Better error handling.
 
 ## Video Example (IT)

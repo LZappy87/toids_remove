@@ -2,12 +2,12 @@
 ################################
 # NAME: MISP IDS Tag Remover for old entries
 # CREATED BY: Luca Emanuele Zappacosta
-# ACTUAL VERSION: 1.1
+# ACTUAL VERSION: 1.3
 # CREATED ON: 03/02/2022
-# UPDATED ON: 05/02/2022
+# UPDATED ON: 07/02/2022
 # FILES USED: 
 # - toids-remove.py (this script)
-# - keys.py (take it as a 'config file')
+# - keys.py (the configuration file)
 # TESTED WITH: 
 # - MISP 2.4.152
 # - PyMISP 2.4.152
@@ -15,15 +15,11 @@
 # - VirusTotal APIv3
 ################################
 # DESCRIPTION:
-# This script it's used to disable all 'to_ids' tags on selected MISP Events and then republish them
-# the script is fully configurable through the keys.py file wich contains:
-# misp_url 		| URL of the MISP instance
-# misp_key 		| The API key needed to access the Rest API
-# misp_verifycert	| If the MISP instance have a certificate (default: false)
-# misp_client_cert	| The path of the certificate (default: none)
-# misp_excluded_tags	| List of tags to exclude (need to be a list)
-# maxtime		| Maximum time for the misp.search (in days, ex: 365d)
-# mintime		| Minimum time for the misp.search (in days, ex: 365d)
+# This script it's used to disable the attribute 'to_ids' on MISP events based on two modes:
+# - [--mode remold] Removing IDS tags from events older than the range passed with the arguments --mintime and --maxtime with the possibility to exclude
+#	some events based on tags (like APT);
+# - [--mode vt] Removing IDS tags based on information gathered from selected vendors through the VirusTotal APIv3 in the time range specified with 
+#	the arguments --mintime and --maxtime.
 ################################
 # CHANGELOG
 # v 1.0 (03/02/2022):
@@ -38,18 +34,25 @@
 # - Added the creation of a default 'keys.py' if not present
 # v 1.2 (05/02/2022):
 # - Preparing VTotal implementation
+# v 1.3 (07/02/2022):
+# - Implemented VirusTotal Mode (vt);
+# - Implemented Remove Old Mode (remold);
+# - Included arguments to launch the script;
+# - Moved some variables to keys.py for better configuration
+# - Included the 'published=True' search constraint (this should speed up the queries);
+# - Overall revamp of the code.
 ################################
 # TODO:
-# - More configuration parameters i guess;
-# - Implement vtotal-test.py functions into the main script;
+# - More configuration parameters;
 # - Better error handling.
 ################################
+###### MISP LIBRARY BLOCK ######
 ################################
 # Importing MISP library
 from pymisp import ExpandedPyMISP
 # Needed to disable InsecureRequestWarning linked to self-signed of the MISP URL when opening a connection with the Rest API
 # Not needed if the destination MISP have a Certificate
-# https://stackoverflow.com/questions/27981545/suppress-insecurerequestwarning-unverified-https-request-is-being-made-in-pytho
+# Source: https://stackoverflow.com/questions/27981545/suppress-insecurerequestwarning-unverified-https-request-is-being-made-in-pytho
 import urllib3
 # This is for the function suppress_output (too much lines with big databases)
 from contextlib import contextmanager
@@ -58,9 +61,68 @@ import sys, os
 import shutil
 # Yes, now with execution timer®
 import time
+# Adding support for arguments
+import argparse
+################################
+##### VTOTAL LIBRARY BLOCK #####
+################################
+# Needed to do the request towards the API
+import requests
+# VTotal APIv3 accepts only encrypted URL for the URL check part
+import base64
+# Need for regex check with IP\URL\Domain
+import re
+################################
+
+# Argument code block
+# Creating the help menu structure
+parser = argparse.ArgumentParser(description='''Script used to remove IDS tag from older events and more, 
+	use --mode to activate either the IDS tag removal on old events (remold) or IDS tag removal based on the VTotal scan result (vt)
+	set --mintime and --maxtime to decide the temporal range''', prog="toids_remove.py")
+
+# First argument: --mode
+# Accepts either remold (for IDS removal on old events) or vt (for IDS removal through VirusTotal analysis of the attribute_value, only IP\URL\Domains atm)
+parser.add_argument(
+	'--mode',
+	metavar="<vt, remold>", 
+	help="Remove IDS tags based on option selected.")
+
+# Second argument: --mintime
+# Specify the minimum time to take in consideration for the search (default set to 1 day)
+parser.add_argument(
+	'--mintime',
+	metavar="<time>",
+	type=int,
+	default='1440m',
+	help='Set minimum time (in m/d) - Default 1440m (1 Day)')
+
+# Third argument: --maxtime
+# Specify the maximum time to take in consideration for the search (default set to 1 year)
+parser.add_argument(
+	'--maxtime',
+	metavar="<time>",
+	type=int,
+	default='365d',
+	help="Set max time (in m/d) - Default 365d (1 Year)")
+
+# Parsing the argument in input
+args = parser.parse_args()
+
+# Set min\max time
+mintime = args.mintime
+maxtime = args.maxtime
+
+# If no\wrong argument print help and exit
+okargs = ['vt','remold']
+if args.mode is None or args.mode not in okargs:
+	parser.print_help()
+	quit()
+
+# Aaaand the SSL error is gone (because certificates are overrated)
+urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 # Function to suppress output (many thanks to the one who done it)
-# https://stackoverflow.com/questions/2125702/how-to-suppress-console-output-in-python
+# Source: https://stackoverflow.com/questions/2125702/how-to-suppress-console-output-in-python
 @contextmanager
 def suppress_stdout():
 	# Toss the output into the shadow realm (/dev/null)
@@ -72,46 +134,44 @@ def suppress_stdout():
         finally:
             sys.stdout = old_stdout
 
-# Counter for attributes modified (and for show ofc)
-i = 0
-event_id = []
-
-# Aaaand the SSL error is gone (because certificates are overrated)
-urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
-
 # Establishing the connection with the MISP Rest API using the information imported from keys.py
 # Error Handling part (to be revised)
 try:
 	# Including variables from keys.py
-	from keys import misp_url, misp_key, misp_verifycert, misp_client_cert, misp_excluded_tags, mintime, maxtime, vtotal_key
-	print(f'Attempting to connect to the Rest API of {misp_url}...')
+	from keys import misp_url, misp_key, misp_verifycert, misp_client_cert
+	print(f'Attempting to connect to the Rest API of the MISP instance {misp_url}...')
 	misp = ExpandedPyMISP(misp_url, misp_key, misp_verifycert, cert=misp_client_cert)
 
-# Error Handling in case the script doesn't find any keys.py file
-# In this case the script generates a default file and end the script
+	# Error Handling in case the script doesn't find any keys.py file
+	# In this case the script generates a default file and end the script
 except ImportError:
 	print('No keys.py file exists, generating a default file...')
 	y = 0
 	f = open("keys.py","w+")
-	
+
 	# Definition of the default keys.py
 	deffile = [
-	'#!/usr/bin/env python',
-	'# Here the informations needed to connect to the REST API of MISP',
-	'misp_url = \'<MISP URL HERE>\'',
-	'misp_key = \'<MISP API KEY HERE>\'',
-	'',
-	'# If MISP have a self-signed certificate keep it to false, otherwise set it to true',
-	'misp_verifycert = False',
-	'misp_client_cert = None',
-	'',
-	'# Here the other parameters',
-	'misp_exclude_tags = [<here the list of the tags to exclude>]',
-	'maxtime = <set max time for query, ex: \'365d\'>',
-	'mintime = <set min time for query, ex: \'365d\'>',
-	'',
-	'# VirusTotal APIv3 part',
-	'vtotal_key = \'<VIRUSTOTAL API KEY HERE>\''
+		'#!/usr/bin/env python',
+		'',
+		'# MISP API Connection Parameters',
+		'misp_url = \'<MISP URL HERE>\'',
+		'misp_key = \'<MISP API KEY HERE>\'',
+		'',
+		'# If MISP have a self-signed certificate keep it to false, otherwise set it to true',
+		'# and populate the misp_client_cert with the path to the certificate',
+		'misp_verifycert = False',
+		'misp_client_cert = None',
+		'',
+		'# MISP Search Paramenters',
+		'misp_exclude_tags = [<here the list of the tags to exclude>]',
+		'# /!\\ DO NOT TOUCH typlist VALUES FOR NOW /!\\',
+		'typlist = [\'ip-src\',\'ip-dst\',\'domain\',\'url\',\'hostname\']',
+		'',
+		'# VirusTotal APIv3 + Search Parameters',
+		'vtotal_key = \'<VIRUSTOTAL API KEY HERE>\'',
+		'maltag = [\'malware\',\'malicious\']',
+		'vlist = [\'Snort IP sample list\',\'PhishLabs\',\'OpenPhish\',\'AlienVault\',\'Sophos\',\'Fortinet\',\'Google Safebrowsing\',\'Abusix\',\'EmergingThreats\',\'MalwareDomainList\',\'Kaspersky\',\'URLhaus\',\'Spamhaus\',\'NotMining\',\'Forcepoint ThreatSeeker\',\'Certego\',\'ESET\',\'ThreatHive\',\'FraudScore\']',
+		'vtrusted = [\'Fortinet\',\'Alienvault\',\'Sophos\',\'Google Safebrowsing\',\'Abusix\',\'Kaspersky\',\'Forcepoint ThreatSeeker\',\'ESET\']'
 	]
 		
 	for y in range(len(deffile)):
@@ -119,56 +179,148 @@ except ImportError:
 		f.write("\r\n")
 	
 	f.close()			
-	print('Default keys.py generated, please modify it with the needed informations, the script will now exit...')
+	print('Default keys.py generated, please modify it with the needed parameters, the script will now exit...')
 	quit()
 
 # Generic Exception Handling, as said this part will be revised with more precise error handling
 except Exception:
 	print('There is a problem with the connection to MISP or the parameters in keys.py, the script will now exit...')
 	quit()
-		
 
-# Searching and generating a list of the events where attributes with the information gathered from keys.py
-# Fixed the query and updated with suggestions from my colleagues
-# QUERY FOR TESTING PURPOSE: result = misp.search(controller='attributes', to_ids=True, tags=tagslist)
-# Generating an exclusion query (this part can AND will be expanded for more personalization)
-try:
-
-	tagslist = misp.build_complex_query(not_parameters=misp_excluded_tags)
-	# This is for testing purpose, please use this string for production enviroment
-	# result = misp.search(controller='attributes', to_ids=True, tags=tagslist, timestamp=(maxtime, mintime))
-	result = misp.search(controller='attributes', to_ids=True, tags=tagslist)
-
-# Generic Exception Handling, Same here, to be revised...
-except Exception:
-	print('Check if all the informations needed are into the keys.py file, the script will now exit...')
+# VT part: remove IDS tags based on VirusTotal scan results
+# STATUS: 100% (COMPLETE)
+if args.mode == "vt":
+	print('To be implemented soon...')
 	quit()
 
-# Here begins the IDS removal part
-print('Removing IDS tags...')
+	# Importing arguments from keys.py for VT
+	# vtotal_key: the API key of VTotal
+	# maltag: series of results linked to malicious detections
+	# vlist: list of vendors selected (score +1)
+	# vtrusted: list of trusted vendor (score +2)
+	# typlist: list of types selected (maybe a bad idea to move it on keys.py, whatever)
+	from keys import vtotal_key, maltag, vlist, vtrusted
+	
+	# score is a counter that will be used as a global score to decide if a indicator should be or not delisted from IDS
+	score = 0
+	 
+	# Set request paramenters towards the VTotal API
+	headers = {
+    	"Accept": "application/json",
+    	"x-apikey": vtotal_key
+	}
+	
+	# Searching for MISP attributes
+	# This is for testing purpose, please uncomment the below string for production enviroment
+	# result = misp.search(controller='attributes', to_ids=True, published=True, type_attribute=typlist, timestamp=(maxtime, mintime))
 
-# Timer starts
-start_time = time.perf_counter()
+	# Searching and generating a list of the events where attributes with the parameters from keys.py
+	try:
+		result = misp.search(controller='attributes', to_ids=True, published=True, type_attribute=typlist)
 
-# Iterate attribute to find and disable the IDS tags
-for attribute in result['Attribute']:
-	i += 1
-	attribute_uuid = attribute['uuid']
-	event_id = attribute['event_id']
-	# As said previously: no futile output allowed
-	with suppress_stdout():
-		misp.update_attribute( { 'uuid': attribute_uuid, 'to_ids': 0})
-		misp.publish(event_id)
+	# Generic Exception Handling, Same here, to be revised...
+	except Exception:
+		print('Check if all the informations needed are into the keys.py file, the script will now exit...')
+		quit()
+	
+	for attribute in result['Attribute']:
+		attribute_uuid = attribute['uuid']
+		event_id = attribute['event_id']
+		attribute_value = attribute['value']
+		
+		# IP
+	 	if re.match("^(?:25[0-5]|2[0-4]\d|[0-1]?\d{1,2})(?:\.(?:25[0-5]|2[0-4]\d|[0-1]?\d{1,2})){3}$", attribute_value):
+     		url = "https://www.virustotal.com/api/v3/ip_addresses/" + attribute_value
+    	
+    	# URL
+	 	elif re.match("^(http:\/\/|https:\/\/).+$", attribute_value):
+     		VirusTotal API accepts only encoded URL, so we need to calculate the base64 of the url to append to the end
+     		of the final URL
+     		url_id = base64.urlsafe_b64encode(attribute_value.encode()).decode().strip("=")
+     		url = "https://www.virustotal.com/api/v3/urls/" + url_id
+    	
+    	# Domain\Hostname
+		elif re.match("^((?!-))(xn--)?[a-z0-9][a-z0-9-_]{0,61}[a-z0-9]{0,1}\.(xn--)?([a-z0-9\-]{1,61}|[a-z0-9-]{1,30}\.[a-z]{2,})$", attribute_value):
+    		url = "https://www.virustotal.com/api/v3/domains/" + attribute_value
 
-# Aaaand timer ends
-end_time = time.perf_counter()
+    	# Send request to the API
+		response = requests.request("GET", url, headers=headers)
 
-# Just for show and stats
-print(f'IDS Tags disabled successfully in {end_time - start_time:0.2f} seconds.')
-print('###############')
-print('Total Events modified:',len(event_id))
-print('Total IDS Attributes modified:',i)
-print('###############')
+		# Parsing the object in JSON
+		jsonresp = response.json()
+
+		print('Removing IDS attribute on events with ' + args.mode + ' mode and time range ' + mintime + ' : ' + maxtime '...' )
+
+		# Timer starts
+		start_time = time.perf_counter()
+
+		for f in vlist:
+			if f in vtrusted and jsonresp['data']['attributes']['last_analysis_results'][f]['result'] in maltag:
+			score += 2
+		elif f not in vtrusted and jsonresp['data']['attributes']['last_analysis_results'][f]['result'] in maltag:
+			score += 1
+		else:
+			pass
+
+		# If score => 5 the IDS tag is not disabled, if < 4 it will be disabled.
+		if score => 5:
+			pass
+		else:
+			with suppress_stdout():
+				misp.update_attribute( { 'uuid': attribute_uuid, 'to_ids': 0})
+				misp.publish(event_id)
+
+		# Aaaand timer ends
+		end_time = time.perf_counter()
+
+# REMOLD part: remove IDS tags from old entries
+# STATUS: 100% (COMPLETED)
+elif args.mode == "remold":		
+
+	# Counter for attributes modified (and for show ofc)
+	i = 0
+	event_id = []
+
+	# Import arguments from keys.py for REMOLD
+	from keys import misp_excluded_tags
+
+	# Searching and generating a list of the events where attributes with the parameters from keys.py
+	try:
+		# Generating an exclusion query (this part can AND will be expanded for more personalization)
+		tagslist = misp.build_complex_query(not_parameters=misp_excluded_tags)
+		# This is for testing purpose, please uncomment the below string for production enviroment
+		# result = misp.search(controller='attributes', to_ids=True, tags=tagslist, timestamp=(maxtime, mintime))
+		result = misp.search(controller='attributes', to_ids=True, published=True, tags=tagslist)
+
+	# Generic Exception Handling, Same here, to be revised...
+	except Exception:
+		print('Check if all the informations needed are into the keys.py file, the script will now exit...')
+		quit()
+
+	print('Removing IDS attribute on events with ' + args.mode + ' mode and time range ' + mintime + ' : ' + maxtime '...' )
+
+	# Timer starts
+	start_time = time.perf_counter()
+
+	# Iterate attribute to find and disable the IDS tags
+	for attribute in result['Attribute']:
+		i += 1
+		attribute_uuid = attribute['uuid']
+		event_id = attribute['event_id']
+		# As said previously: no futile output allowed
+		with suppress_stdout():
+			misp.update_attribute( { 'uuid': attribute_uuid, 'to_ids': 0})
+			misp.publish(event_id)
+
+	# Aaaand timer ends
+	end_time = time.perf_counter()
+
+	# Just for show and stats
+	print(f'IDS Tags disabled successfully in {end_time - start_time:0.2f} seconds.')
+	print('###############')
+	print('Total Events modified:',len(event_id))
+	print('Total IDS Attributes modified:',i)
+	print('###############')
 
 # Republishing all the modified events in result (if present)
 if len(event_id) > 0:

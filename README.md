@@ -20,7 +20,7 @@
 
 ## DESCRIPTION
 This script it's used to disable the attribute 'to_ids' on MISP events based on two modes:
-- [--mode remold] Removing IDS tags from events older than the range passed with the arguments --mintime and --maxtime with the possibility to exclude some events based on tags (like APT);
+- [--mode remold] Removing IDS tags from events in the time range specified with the arguments --mintime and --maxtime with the possibility to exclude some events based on tags (like APT);
 - [--mode vt] Removing IDS tags based on information gathered from selected vendors through the VirusTotal APIv3 in the time range specified with the arguments --mintime and --maxtime.
 
 An idea developed from this article: https://www.vanimpe.eu/2019/09/24/tracking-false-positives-and-disabling-to_ids-in-misp/

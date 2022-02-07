@@ -1,4 +1,4 @@
-# MISP IDS Tag Remover for old entries
+# MISP IDS Tag Remover
 
 ## CREATED BY: LZappy87
 

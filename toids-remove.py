@@ -38,7 +38,7 @@
 # - Implemented VirusTotal Mode (vt);
 # - Implemented Remove Old Mode (remold);
 # - Included arguments to launch the script;
-# - Moved some variables to keys.py for better configuration
+# - Moved some variables to keys.py for better configuration;
 # - Included the 'published=True' search constraint (this should speed up the queries);
 # - Overall revamp of the code.
 ################################
@@ -104,6 +104,7 @@ parser.add_argument(
 	type=str,
 	default='365d',
 	help="Set max time (in m/d) - Default 365d (1 Year)")
+
 
 # Parsing the argument in input
 args = parser.parse_args()
@@ -268,6 +269,7 @@ if args.mode == "vt":
 
 		# If score >= 5 the IDS tag is not disabled, if < 4 it will be disabled.
 		if score >= 5:
+		
 			print('Tag not removed from ' + attribute_value + ' on EventID ' + event_id + ', score: ' + str(score))
 			pass
 			

@@ -92,7 +92,7 @@ parser.add_argument(
 parser.add_argument(
 	'--mintime',
 	metavar="<time>",
-	type=int,
+	type=str,
 	default='1440m',
 	help='Set minimum time (in m/d) - Default 1440m (1 Day)')
 
@@ -101,7 +101,7 @@ parser.add_argument(
 parser.add_argument(
 	'--maxtime',
 	metavar="<time>",
-	type=int,
+	type=str,
 	default='365d',
 	help="Set max time (in m/d) - Default 365d (1 Year)")
 
@@ -190,20 +190,15 @@ except Exception:
 # VT part: remove IDS tags based on VirusTotal scan results
 # STATUS: 100% (COMPLETE)
 if args.mode == "vt":
-	print('To be implemented soon...')
-	quit()
-
+	
 	# Importing arguments from keys.py for VT
 	# vtotal_key: the API key of VTotal
 	# maltag: series of results linked to malicious detections
 	# vlist: list of vendors selected (score +1)
 	# vtrusted: list of trusted vendor (score +2)
 	# typlist: list of types selected (maybe a bad idea to move it on keys.py, whatever)
-	from keys import vtotal_key, maltag, vlist, vtrusted
+	from keys import vtotal_key, maltag, vlist, vtrusted, typlist, misp_excluded_tags
 	
-	# score is a counter that will be used as a global score to decide if a indicator should be or not delisted from IDS
-	score = 0
-	 
 	# Set request paramenters towards the VTotal API
 	headers = {
     	"Accept": "application/json",
@@ -211,64 +206,76 @@ if args.mode == "vt":
 	}
 	
 	# Searching for MISP attributes
-	# This is for testing purpose, please uncomment the below string for production enviroment
-	# result = misp.search(controller='attributes', to_ids=True, published=True, type_attribute=typlist, timestamp=(maxtime, mintime))
-
+	# Generating an exclusion query (this part can AND will be expanded for more personalization)
+	tagslist = misp.build_complex_query(not_parameters=misp_excluded_tags)
 	# Searching and generating a list of the events where attributes with the parameters from keys.py
 	try:
-		result = misp.search(controller='attributes', to_ids=True, published=True, type_attribute=typlist)
+		# This is for testing purpose, please uncomment the below string for production enviroment
+		# result = misp.search(controller='attributes', to_ids=True, published=True, type_attribute=typlist, timestamp=(maxtime, mintime), tags=tagslist)
+		result = misp.search(controller='attributes', to_ids=True, published=True, type_attribute=typlist, tags=tagslist)
 
 	# Generic Exception Handling, Same here, to be revised...
 	except Exception:
 		print('Check if all the informations needed are into the keys.py file, the script will now exit...')
 		quit()
 	
+	print('Removing IDS attribute on events with ' + args.mode + ' mode and time range ' + mintime + ' : ' + maxtime + '...' )
+	
 	for attribute in result['Attribute']:
+	
+		# score is a counter that will be used as a global score to decide if a indicator should be or not delisted from IDS
+		score = 0
+		
+		# Gets needed informations from MISP
 		attribute_uuid = attribute['uuid']
 		event_id = attribute['event_id']
 		attribute_value = attribute['value']
 		
 		# IP
-	 	if re.match("^(?:25[0-5]|2[0-4]\d|[0-1]?\d{1,2})(?:\.(?:25[0-5]|2[0-4]\d|[0-1]?\d{1,2})){3}$", attribute_value):
-     		url = "https://www.virustotal.com/api/v3/ip_addresses/" + attribute_value
+		if re.match("^(?:25[0-5]|2[0-4]\d|[0-1]?\d{1,2})(?:\.(?:25[0-5]|2[0-4]\d|[0-1]?\d{1,2})){3}$", attribute_value):
+     			url = "https://www.virustotal.com/api/v3/ip_addresses/" + attribute_value
     	
-    	# URL
-	 	elif re.match("^(http:\/\/|https:\/\/).+$", attribute_value):
-     		VirusTotal API accepts only encoded URL, so we need to calculate the base64 of the url to append to the end
-     		of the final URL
-     		url_id = base64.urlsafe_b64encode(attribute_value.encode()).decode().strip("=")
-     		url = "https://www.virustotal.com/api/v3/urls/" + url_id
+	    	# URL
+		elif re.match("^(http:\/\/|https:\/\/).+$", attribute_value):
+     			# VirusTotal API accepts only encoded URL, so we need to calculate the base64 of the url to append to the end
+     			# of the final URL
+     			url_id = base64.urlsafe_b64encode(attribute_value.encode()).decode().strip("=")
+     			url = "https://www.virustotal.com/api/v3/urls/" + url_id
     	
-    	# Domain\Hostname
+	    	# Domain\Hostname
 		elif re.match("^((?!-))(xn--)?[a-z0-9][a-z0-9-_]{0,61}[a-z0-9]{0,1}\.(xn--)?([a-z0-9\-]{1,61}|[a-z0-9-]{1,30}\.[a-z]{2,})$", attribute_value):
-    		url = "https://www.virustotal.com/api/v3/domains/" + attribute_value
+			url = "https://www.virustotal.com/api/v3/domains/" + attribute_value
 
-    	# Send request to the API
+	    	# Send request to the API
 		response = requests.request("GET", url, headers=headers)
 
 		# Parsing the object in JSON
 		jsonresp = response.json()
 
-		print('Removing IDS attribute on events with ' + args.mode + ' mode and time range ' + mintime + ' : ' + maxtime '...' )
-
 		# Timer starts
 		start_time = time.perf_counter()
 
 		for f in vlist:
+		
 			if f in vtrusted and jsonresp['data']['attributes']['last_analysis_results'][f]['result'] in maltag:
-			score += 2
-		elif f not in vtrusted and jsonresp['data']['attributes']['last_analysis_results'][f]['result'] in maltag:
-			score += 1
-		else:
-			pass
+				score += 2
+			
+			elif f not in vtrusted and jsonresp['data']['attributes']['last_analysis_results'][f]['result'] in maltag:
+				score += 1
+			
+			else:
+				pass
 
-		# If score => 5 the IDS tag is not disabled, if < 4 it will be disabled.
-		if score => 5:
+		# If score >= 5 the IDS tag is not disabled, if < 4 it will be disabled.
+		if score >= 5:
+			print('Tag not removed from ' + attribute_value + ' on EventID ' + event_id + ', score: ' + str(score))
 			pass
+			
 		else:
 			with suppress_stdout():
 				misp.update_attribute( { 'uuid': attribute_uuid, 'to_ids': 0})
 				misp.publish(event_id)
+			print('Tag removed from ' + attribute_value + ' on EventID ' + event_id + ', score: ' + str(score))
 
 		# Aaaand timer ends
 		end_time = time.perf_counter()
@@ -297,7 +304,7 @@ elif args.mode == "remold":
 		print('Check if all the informations needed are into the keys.py file, the script will now exit...')
 		quit()
 
-	print('Removing IDS attribute on events with ' + args.mode + ' mode and time range ' + mintime + ' : ' + maxtime '...' )
+	print('Removing IDS attribute on events with ' + args.mode + ' mode and time range ' + mintime + ' : ' + maxtime + '...' )
 
 	# Timer starts
 	start_time = time.perf_counter()
@@ -307,10 +314,12 @@ elif args.mode == "remold":
 		i += 1
 		attribute_uuid = attribute['uuid']
 		event_id = attribute['event_id']
+		attribute_value = attribute['value']
 		# As said previously: no futile output allowed
 		with suppress_stdout():
 			misp.update_attribute( { 'uuid': attribute_uuid, 'to_ids': 0})
 			misp.publish(event_id)
+		print('Tag removed from ' + attribute_value + ' on EventID ' + event_id)
 
 	# Aaaand timer ends
 	end_time = time.perf_counter()
@@ -324,7 +333,8 @@ elif args.mode == "remold":
 
 # Republishing all the modified events in result (if present)
 if len(event_id) > 0:
-	print(f'Done, {len(event_id)} events republished!')
+	print(f'Done, {len(event_id)} event(s) republished!')
+	
 else:
 	print('No need to republish events, no entry modified.')
 

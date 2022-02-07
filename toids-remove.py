@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 ################################
 # NAME: MISP IDS Tag Remover for old entries
-# CREATED BY: Luca Emanuele Zappacosta
+# CREATED BY: LZappy87
 # ACTUAL VERSION: 1.3
 # CREATED ON: 03/02/2022
 # UPDATED ON: 07/02/2022

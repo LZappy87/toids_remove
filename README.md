@@ -19,9 +19,7 @@
 - VirusTotal APIv3
 
 ## DESCRIPTION
-This script it's used to disable the attribute 'to_ids' on MISP events based on two modes:
-- [--mode remold] Removing IDS tags from events in the time range specified with the arguments --mintime and --maxtime with the possibility to exclude some events based on tags (like APT);
-- [--mode vt] Removing IDS tags based on information gathered from selected vendors through the VirusTotal APIv3 in the time range specified with the arguments --mintime and --maxtime.
+This script it's used to disable the attribute 'to_ids' on MISP events, features removal of the IDS tag on old events or based on VirusTotal scan results.
 
 ## USAGE
 toids_remove.py --mode <vt, remold> --mintime [time] --maxtime [time]

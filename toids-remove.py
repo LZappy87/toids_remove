@@ -97,7 +97,7 @@ parser.add_argument(
 	'--mintime',
 	metavar="<time>",
 	type=str,
-	help='Set minimum time (in m/d) - Default 0s (Now)')
+	help='Set minimum time (in s/m/d) - Default 0s (Now)')
 
 # Third argument: --maxtime
 # Specify the maximum time to take in consideration for the search (default set to 1 year)
@@ -105,7 +105,7 @@ parser.add_argument(
 	'--maxtime',
 	metavar="<time>",
 	type=str,
-	help="Set max time (in m/d) - Default 365d (1 Year)")
+	help="Set max time (in s/m/d) - Default 365d (1 Year)")
 
 # Parsing the argument in input
 args = parser.parse_args()

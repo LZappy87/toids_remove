@@ -74,6 +74,10 @@ import base64
 import re
 ################################
 
+# Counter for attributes modified (and for show ofc)
+i = 0
+event_id = []
+
 # Argument code block
 # Creating the help menu structure
 parser = argparse.ArgumentParser(description='''Script used to remove IDS tag from older events and more, 
@@ -93,8 +97,7 @@ parser.add_argument(
 	'--mintime',
 	metavar="<time>",
 	type=str,
-	default='1440m',
-	help='Set minimum time (in m/d) - Default 1440m (1 Day)')
+	help='Set minimum time (in m/d) - Default 0s (Now)')
 
 # Third argument: --maxtime
 # Specify the maximum time to take in consideration for the search (default set to 1 year)
@@ -102,17 +105,40 @@ parser.add_argument(
 	'--maxtime',
 	metavar="<time>",
 	type=str,
-	default='365d',
 	help="Set max time (in m/d) - Default 365d (1 Year)")
 
 # Parsing the argument in input
 args = parser.parse_args()
 
-# Set min\max time
-mintime = args.mintime
-maxtime = args.maxtime
+# If no parameter specified in mintime\maxtime set to default both
+if args.mintime is None and args.maxtime is None:
+	print('No mintime\maxtime specified, time range set to 0s/365d...')
+	time.sleep(5)
+	mintime = '0s'
+	maxtime = '365d'
+# If no --mintime argument passed set to default mintime
+elif args.mintime is None and args.maxtime is not None:
+	print('No mintime specified, set to default (0s)...')
+	time.sleep(5)
+	mintime = '0s'
+	maxtime = args.maxtime
+# If no --maxtime argument passed set to default maxtime
+elif args.mintime is not None and args.maxtime is None:
+	print('No maxtime specified, set to default (365d)...')
+	time.sleep(5)
+	mintime = args.mintime
+	maxtime = '365d'
 
-# If no\wrong argument print help and exit
+# if arguments are present set them directly
+# Just to make sure no wrong arguments are passed, match only arguments
+# with 4 digits (1-9999) and either a d\m\s as a final character
+if re.match("^[0-9]{1,4}[d,m,s]$", mintime) and re.match("^[0-9]{1,4}[d,m,s]$", maxtime):
+	pass
+else:
+	print("Parameter in mintime\maxtime wrong.")
+	quit()
+
+# If no\wrong argument for --mode print help and exit
 okargs = ['vt','remold']
 if args.mode is None or args.mode not in okargs:
 	parser.print_help()
@@ -185,6 +211,10 @@ except Exception:
 	print('There is a problem with the connection to MISP or the parameters in keys.py, the script will now exit...')
 	quit()
 
+
+# Timer starts
+start_time = time.perf_counter()
+	
 # VT part: remove IDS tags based on VirusTotal scan results
 # STATUS: 100% (COMPLETE)
 if args.mode == "vt":
@@ -209,14 +239,14 @@ if args.mode == "vt":
 		# Just in case if no tags are specified into keys.py
 		if misp_excluded_tags == []:			
 			# The string with timestamp is for testing purposes, please uncomment the below string for production enviroment and comment the other
-			# result = misp.search(controller='attributes', to_ids=True, published=True, type_attribute=typlist, timestamp=(maxtime, mintime))
-			result = misp.search(controller='attributes', to_ids=True, published=True, type_attribute=typlist)
+			result = misp.search(controller='attributes', to_ids=True, published=True, type_attribute=typlist, timestamp=(maxtime, mintime))
+			# result = misp.search(controller='attributes', to_ids=True, published=True, type_attribute=typlist)
 		else:			
 			# Generating an exclusion query (this part can AND will be expanded for more personalization)
 			tagslist = misp.build_complex_query(not_parameters=misp_excluded_tags)
 			# The string with timestamp is for testing purposes, please uncomment the below string for production enviroment and comment the other
-			# result = misp.search(controller='attributes', to_ids=True, published=True, type_attribute=typlist, timestamp=(maxtime, mintime), tags=tagslist)
-			result = misp.search(controller='attributes', to_ids=True, published=True, type_attribute=typlist, tags=tagslist)
+			result = misp.search(controller='attributes', to_ids=True, published=True, type_attribute=typlist, timestamp=(maxtime, mintime), tags=tagslist)
+			# result = misp.search(controller='attributes', to_ids=True, published=True, type_attribute=typlist, tags=tagslist)
 
 	# Generic Exception Handling, Same here, to be revised...
 	except Exception:
@@ -229,7 +259,7 @@ if args.mode == "vt":
 	
 		# This is a counter that will be used as a global score to decide if a indicator should be or not delisted from IDS
 		score = 0
-		
+				
 		# Gets needed informations from MISP
 		attribute_uuid = attribute['uuid']
 		event_id = attribute['event_id']
@@ -265,9 +295,6 @@ if args.mode == "vt":
     			print("Error Message: ", jsonresp['error']['message'])
     			quit()
 
-		# Timer starts
-		start_time = time.perf_counter()
-
 		for f in vlist:
 			if f in vtrusted and jsonresp['data']['attributes']['last_analysis_results'][f]['result'] in maltag:
 				score += 2
@@ -279,25 +306,20 @@ if args.mode == "vt":
 		# If score >= 5 the IDS tag is not disabled, if < 4 it will be disabled.
 		if score >= 5:
 			# TODO: verbose mode
-			print('Tag not removed from ' + attribute_value + ' on EventID ' + event_id + ', score: ' + str(score))
+			print('[EventID ' + event_id + '] Tag not removed from ' + attribute_value + ', score: ' + str(score))
 			pass
 		else:
 			with suppress_stdout():
 				misp.update_attribute( { 'uuid': attribute_uuid, 'to_ids': 0})
 				misp.publish(event_id)
 			# TODO: verbose mode
-			print('Tag removed from ' + attribute_value + ' on EventID ' + event_id + ', score: ' + str(score))
+			i += 1
+			print('[EventID ' + event_id + '] Tag removed from ' + attribute_value + ', score: ' + str(score))
 
-		# Aaaand timer ends
-		end_time = time.perf_counter()
 
 # REMOLD part: remove IDS tags from old entries
 # STATUS: 100% (COMPLETE)
 elif args.mode == "remold":		
-
-	# Counter for attributes modified (and for show ofc)
-	i = 0
-	event_id = []
 
 	# Import arguments from keys.py for REMOLD
 	# misp_excluded_tags: this is used as a filter to exclude events with a certain tag(s)
@@ -308,14 +330,14 @@ elif args.mode == "remold":
 		# Just in case if no tags are specified into keys.py
 		if misp_excluded_tags == []:
 			# The string with timestamp is for testing purposes, please uncomment the below string for production enviroment and comment the other
-			# result = misp.search(controller='attributes', to_ids=True, timestamp=(maxtime, mintime))
-			result = misp.search(controller='attributes', to_ids=True, published=True)
+			result = misp.search(controller='attributes', to_ids=True, timestamp=(maxtime, mintime))
+			# result = misp.search(controller='attributes', to_ids=True, published=True)
 		else:
 			# Generating an exclusion query (this part can AND will be expanded for more personalization)
 			tagslist = misp.build_complex_query(not_parameters=misp_excluded_tags)
 			# The string with timestamp is for testing purposes, please uncomment the below string for production enviroment and comment the other
-			# result = misp.search(controller='attributes', to_ids=True, tags=tagslist, timestamp=(maxtime, mintime))
-			result = misp.search(controller='attributes', to_ids=True, published=True, tags=tagslist)
+			result = misp.search(controller='attributes', to_ids=True, tags=tagslist, timestamp=(maxtime, mintime))
+			# result = misp.search(controller='attributes', to_ids=True, published=True, tags=tagslist)
 
 	# Generic Exception Handling, Same here, to be revised...
 	except Exception:
@@ -324,34 +346,33 @@ elif args.mode == "remold":
 
 	print('Removing IDS attribute on events with ' + args.mode + ' mode and time range ' + mintime + ' : ' + maxtime + '...' )
 
-	# Timer starts
-	start_time = time.perf_counter()
-
 	# Iterate attribute to find and disable the IDS tags
 	for attribute in result['Attribute']:
 		i += 1
 		attribute_uuid = attribute['uuid']
 		event_id = attribute['event_id']
 		attribute_value = attribute['value']
+
 		# As said previously: no futile output allowed
 		with suppress_stdout():
 			misp.update_attribute( { 'uuid': attribute_uuid, 'to_ids': 0})
 			misp.publish(event_id)
-		print('Tag removed from ' + attribute_value + ' on EventID ' + event_id)
+		print('[EventID ' + event_id + '] Tag removed from ' + attribute_value)
 
-	# Aaaand timer ends
-	end_time = time.perf_counter()
+# Aaaand timer ends
+end_time = time.perf_counter()
 
-	# Just for show and stats
-	print(f'IDS Tags disabled successfully in {end_time - start_time:0.2f} seconds.')
-	print('###############')
-	print('Total Events modified:',len(event_id))
-	print('Total IDS Attributes modified:',i)
-	print('###############')
+# Just for show and stats
+print('###############')
+print(f'IDS Tags disabled successfully in {end_time - start_time:0.2f} seconds.')
+print('###############')
+print('Total Events modified:',len(event_id))
+print('Total IDS Attributes modified:',i)
+print('###############')
 
 # Republishing all the modified events (if present)
 if len(event_id) > 0:
-	print(f'Done, {len(event_id)} event(s) republished!')
+	print('Events republished: ', len(event_id))
 	
 else:
 	print('No need to republish events, no entry modified.')

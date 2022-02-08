@@ -28,11 +28,13 @@ toids_remove.py --mode <vt, remold> --mintime [time] --maxtime [time]
 - VirusTotal mode (vt): the removal of the to_ids attribute is decided based on the scan results pulled from the VTotal APIv3
 - Remove Old mode (remold): the removal of the to_ids attribute is decided based only on the time range
   
-in both cases can be specified a time range* (--mintime, --maxtime) specified in day(d) or minutes(m) and an eventual Event Tag exclusion
+in both cases can be specified a time range* (--mintime, --maxtime) specified in day(d), minutes(m) or seconds(s) and an eventual Event Tag exclusion
 
-*: the default mintime is 1 day (1440m), the default maxtime is 1 year (365d)
+*: the default mintime is now (0s), the default maxtime is 1 year (365d)
 
 An idea developed from this article: https://www.vanimpe.eu/2019/09/24/tracking-false-positives-and-disabling-to_ids-in-misp/
+
+https://user-images.githubusercontent.com/47757757/153056860-dc4d2b04-a201-474a-a1c3-1a79c36cdda3.mp4
 
 ## CHANGELOG
 ### v 1.3 (07/02/2022):
@@ -61,7 +63,3 @@ First release
 ## TODO:
 - More configuration parameters;
 - Better error handling.
-
-## Video Example (IT)
-
-https://user-images.githubusercontent.com/47757757/152594113-db97c724-363e-4ec9-8a8e-b3ac4c6c75db.mp4

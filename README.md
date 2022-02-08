@@ -34,6 +34,8 @@ in both cases can be specified a time range* (--mintime, --maxtime) specified in
 
 An idea developed from this article: https://www.vanimpe.eu/2019/09/24/tracking-false-positives-and-disabling-to_ids-in-misp/
 
+![image](https://user-images.githubusercontent.com/47757757/153057691-78330e8a-aad7-4311-9404-99a8f1cb4b53.png)
+
 https://user-images.githubusercontent.com/47757757/153056860-dc4d2b04-a201-474a-a1c3-1a79c36cdda3.mp4
 
 ## CHANGELOG

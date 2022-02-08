@@ -105,7 +105,6 @@ parser.add_argument(
 	default='365d',
 	help="Set max time (in m/d) - Default 365d (1 Year)")
 
-
 # Parsing the argument in input
 args = parser.parse_args()
 
@@ -135,16 +134,14 @@ def suppress_stdout():
         finally:
             sys.stdout = old_stdout
 
-# Establishing the connection with the MISP Rest API using the information imported from keys.py
-# Error Handling part (to be revised)
+# Establishing the connection with the MISP Rest API using the parameters imported from keys.py
 try:
-	# Including variables from keys.py
+	# Including parameters for MISP connection from keys.py and attempt connection
 	from keys import misp_url, misp_key, misp_verifycert, misp_client_cert
 	print(f'Attempting to connect to the Rest API of the MISP instance {misp_url}...')
 	misp = ExpandedPyMISP(misp_url, misp_key, misp_verifycert, cert=misp_client_cert)
 
-	# Error Handling in case the script doesn't find any keys.py file
-	# In this case the script generates a default file and end the script
+# Error Handling in case the script doesn't find any keys.py file, in this case the script generates a default file and end the script
 except ImportError:
 	print('No keys.py file exists, generating a default file...')
 	y = 0
@@ -198,6 +195,7 @@ if args.mode == "vt":
 	# vlist: list of vendors selected (score +1)
 	# vtrusted: list of trusted vendor (score +2)
 	# typlist: list of types selected (maybe a bad idea to move it on keys.py, whatever)
+	# misp_excluded_tags: decided to include this one too for tag exclusion (just in case)
 	from keys import vtotal_key, maltag, vlist, vtrusted, typlist, misp_excluded_tags
 	
 	# Set request paramenters towards the VTotal API
@@ -209,9 +207,10 @@ if args.mode == "vt":
 	# Searching for MISP attributes
 	# Generating an exclusion query (this part can AND will be expanded for more personalization)
 	tagslist = misp.build_complex_query(not_parameters=misp_excluded_tags)
+	
 	# Searching and generating a list of the events where attributes with the parameters from keys.py
 	try:
-		# This is for testing purpose, please uncomment the below string for production enviroment
+		# The string with timestamp is for testing purposes, please uncomment the below string for production enviroment and comment the other
 		# result = misp.search(controller='attributes', to_ids=True, published=True, type_attribute=typlist, timestamp=(maxtime, mintime), tags=tagslist)
 		result = misp.search(controller='attributes', to_ids=True, published=True, type_attribute=typlist, tags=tagslist)
 
@@ -224,7 +223,7 @@ if args.mode == "vt":
 	
 	for attribute in result['Attribute']:
 	
-		# score is a counter that will be used as a global score to decide if a indicator should be or not delisted from IDS
+		# This is a counter that will be used as a global score to decide if a indicator should be or not delisted from IDS
 		score = 0
 		
 		# Gets needed informations from MISP
@@ -238,8 +237,7 @@ if args.mode == "vt":
     	
 	    	# URL
 		elif re.match("^(http:\/\/|https:\/\/).+$", attribute_value):
-     			# VirusTotal API accepts only encoded URL, so we need to calculate the base64 of the url to append to the end
-     			# of the final URL
+     			# VirusTotal API accepts only encoded URL, so we need to calculate the base64 of the url to append to the end of the final URL
      			url_id = base64.urlsafe_b64encode(attribute_value.encode()).decode().strip("=")
      			url = "https://www.virustotal.com/api/v3/urls/" + url_id
     	
@@ -252,38 +250,45 @@ if args.mode == "vt":
 
 		# Parsing the object in JSON
 		jsonresp = response.json()
+		
+		# Response check, if not 200 end the script and print the error details
+		httpresponse = str(response)
+		if "20" in httpresponse:
+    			pass
+		else:
+    			print("No connection established")
+    			print("Error Type:", jsonresp['error']['code'])
+    			print("Error Message: ", jsonresp['error']['message'])
+    			quit()
 
 		# Timer starts
 		start_time = time.perf_counter()
 
 		for f in vlist:
-		
 			if f in vtrusted and jsonresp['data']['attributes']['last_analysis_results'][f]['result'] in maltag:
 				score += 2
-			
 			elif f not in vtrusted and jsonresp['data']['attributes']['last_analysis_results'][f]['result'] in maltag:
 				score += 1
-			
 			else:
 				pass
 
 		# If score >= 5 the IDS tag is not disabled, if < 4 it will be disabled.
 		if score >= 5:
-		
+			# TODO: verbose mode
 			print('Tag not removed from ' + attribute_value + ' on EventID ' + event_id + ', score: ' + str(score))
 			pass
-			
 		else:
 			with suppress_stdout():
 				misp.update_attribute( { 'uuid': attribute_uuid, 'to_ids': 0})
 				misp.publish(event_id)
+			# TODO: verbose mode
 			print('Tag removed from ' + attribute_value + ' on EventID ' + event_id + ', score: ' + str(score))
 
 		# Aaaand timer ends
 		end_time = time.perf_counter()
 
 # REMOLD part: remove IDS tags from old entries
-# STATUS: 100% (COMPLETED)
+# STATUS: 100% (COMPLETE)
 elif args.mode == "remold":		
 
 	# Counter for attributes modified (and for show ofc)
@@ -291,13 +296,15 @@ elif args.mode == "remold":
 	event_id = []
 
 	# Import arguments from keys.py for REMOLD
+	# misp_excluded_tags: this is used as a filter to exclude events with a certain tag(s)
 	from keys import misp_excluded_tags
 
+	# Generating an exclusion query (this part can AND will be expanded for more personalization)
+	tagslist = misp.build_complex_query(not_parameters=misp_excluded_tags)
+	
 	# Searching and generating a list of the events where attributes with the parameters from keys.py
 	try:
-		# Generating an exclusion query (this part can AND will be expanded for more personalization)
-		tagslist = misp.build_complex_query(not_parameters=misp_excluded_tags)
-		# This is for testing purpose, please uncomment the below string for production enviroment
+		# The string with timestamp is for testing purposes, please uncomment the below string for production enviroment and comment the other
 		# result = misp.search(controller='attributes', to_ids=True, tags=tagslist, timestamp=(maxtime, mintime))
 		result = misp.search(controller='attributes', to_ids=True, published=True, tags=tagslist)
 
@@ -333,7 +340,7 @@ elif args.mode == "remold":
 	print('Total IDS Attributes modified:',i)
 	print('###############')
 
-# Republishing all the modified events in result (if present)
+# Republishing all the modified events (if present)
 if len(event_id) > 0:
 	print(f'Done, {len(event_id)} event(s) republished!')
 	

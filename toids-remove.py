@@ -110,6 +110,12 @@ parser.add_argument(
 # Parsing the argument in input
 args = parser.parse_args()
 
+# If no\wrong argument for --mode print help and exit
+okargs = ['vt','remold']
+if args.mode is None or args.mode not in okargs:
+	parser.print_help()
+	quit()
+
 # If no parameter specified in mintime\maxtime set to default both
 if args.mintime is None and args.maxtime is None:
 	print('No mintime\maxtime specified, time range set to 0s/365d...')
@@ -136,12 +142,6 @@ if re.match("^[0-9]{1,4}[d,m,s]$", mintime) and re.match("^[0-9]{1,4}[d,m,s]$", 
 	pass
 else:
 	print("Parameter in mintime\maxtime wrong.")
-	quit()
-
-# If no\wrong argument for --mode print help and exit
-okargs = ['vt','remold']
-if args.mode is None or args.mode not in okargs:
-	parser.print_help()
 	quit()
 
 # Aaaand the SSL error is gone (because certificates are overrated)

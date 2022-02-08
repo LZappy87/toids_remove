@@ -204,15 +204,19 @@ if args.mode == "vt":
     	"x-apikey": vtotal_key
 	}
 	
-	# Searching for MISP attributes
-	# Generating an exclusion query (this part can AND will be expanded for more personalization)
-	tagslist = misp.build_complex_query(not_parameters=misp_excluded_tags)
-	
 	# Searching and generating a list of the events where attributes with the parameters from keys.py
 	try:
-		# The string with timestamp is for testing purposes, please uncomment the below string for production enviroment and comment the other
-		# result = misp.search(controller='attributes', to_ids=True, published=True, type_attribute=typlist, timestamp=(maxtime, mintime), tags=tagslist)
-		result = misp.search(controller='attributes', to_ids=True, published=True, type_attribute=typlist, tags=tagslist)
+		# Just in case if no tags are specified into keys.py
+		if misp_excluded_tags == []:			
+			# The string with timestamp is for testing purposes, please uncomment the below string for production enviroment and comment the other
+			# result = misp.search(controller='attributes', to_ids=True, published=True, type_attribute=typlist, timestamp=(maxtime, mintime))
+			result = misp.search(controller='attributes', to_ids=True, published=True, type_attribute=typlist)
+		else:			
+			# Generating an exclusion query (this part can AND will be expanded for more personalization)
+			tagslist = misp.build_complex_query(not_parameters=misp_excluded_tags)
+			# The string with timestamp is for testing purposes, please uncomment the below string for production enviroment and comment the other
+			# result = misp.search(controller='attributes', to_ids=True, published=True, type_attribute=typlist, timestamp=(maxtime, mintime), tags=tagslist)
+			result = misp.search(controller='attributes', to_ids=True, published=True, type_attribute=typlist, tags=tagslist)
 
 	# Generic Exception Handling, Same here, to be revised...
 	except Exception:
@@ -299,14 +303,19 @@ elif args.mode == "remold":
 	# misp_excluded_tags: this is used as a filter to exclude events with a certain tag(s)
 	from keys import misp_excluded_tags
 
-	# Generating an exclusion query (this part can AND will be expanded for more personalization)
-	tagslist = misp.build_complex_query(not_parameters=misp_excluded_tags)
-	
 	# Searching and generating a list of the events where attributes with the parameters from keys.py
 	try:
-		# The string with timestamp is for testing purposes, please uncomment the below string for production enviroment and comment the other
-		# result = misp.search(controller='attributes', to_ids=True, tags=tagslist, timestamp=(maxtime, mintime))
-		result = misp.search(controller='attributes', to_ids=True, published=True, tags=tagslist)
+		# Just in case if no tags are specified into keys.py
+		if misp_excluded_tags == []:
+			# The string with timestamp is for testing purposes, please uncomment the below string for production enviroment and comment the other
+			# result = misp.search(controller='attributes', to_ids=True, timestamp=(maxtime, mintime))
+			result = misp.search(controller='attributes', to_ids=True, published=True)
+		else:
+			# Generating an exclusion query (this part can AND will be expanded for more personalization)
+			tagslist = misp.build_complex_query(not_parameters=misp_excluded_tags)
+			# The string with timestamp is for testing purposes, please uncomment the below string for production enviroment and comment the other
+			# result = misp.search(controller='attributes', to_ids=True, tags=tagslist, timestamp=(maxtime, mintime))
+			result = misp.search(controller='attributes', to_ids=True, published=True, tags=tagslist)
 
 	# Generic Exception Handling, Same here, to be revised...
 	except Exception:

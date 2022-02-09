@@ -39,7 +39,7 @@ An idea developed from this article: https://www.vanimpe.eu/2019/09/24/tracking-
 https://user-images.githubusercontent.com/47757757/153056860-dc4d2b04-a201-474a-a1c3-1a79c36cdda3.mp4
 
 ## CHANGELOG
-### v 1.3 (07/02/2022):
+### v 1.3 (08/02/2022):
 - Implemented VirusTotal Mode (vt);
 - Implemented Remove Old Mode (remold);
 - Included arguments to launch the script;

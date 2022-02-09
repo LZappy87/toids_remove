@@ -4,7 +4,7 @@
 # CREATED BY: LZappy87
 # ACTUAL VERSION: 1.3
 # CREATED ON: 03/02/2022
-# UPDATED ON: 07/02/2022
+# UPDATED ON: 08/02/2022
 # FILES USED: 
 # - toids-remove.py (this script)
 # - keys.py (the configuration file)

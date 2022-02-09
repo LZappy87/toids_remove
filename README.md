@@ -45,6 +45,7 @@ https://user-images.githubusercontent.com/47757757/153056860-dc4d2b04-a201-474a-
 - Included arguments to launch the script;
 - Moved some variables to keys.py for better configuration;
 - Included the 'published=True' search constraint (this should speed up the queries);
+- Removed mintime and maxtime from keys.py, substituted with arguments --mintime --maxtime;
 - Overall revamp of the code.
 
 ### v 1.2 (05/02/2022):

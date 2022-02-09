@@ -28,7 +28,7 @@ toids_remove.py --mode <vt, remold> --mintime [time] --maxtime [time]
 - VirusTotal mode (vt): the removal of the to_ids attribute is decided based on the scan results pulled from the VTotal APIv3
 - Remove Old mode (remold): the removal of the to_ids attribute is decided based only on the time range
   
-in both cases can be specified a time range* (--mintime, --maxtime) specified in day(d), minutes(m) or seconds(s) and an eventual Event Tag exclusion
+in both cases can be specified a time range* (--mintime, --maxtime) in day(d), minutes(m) or seconds(s), an Event Tag exclusion can be setup into keys.py .
 
 *: the default mintime is now (0s), the default maxtime is 1 year (365d)
 

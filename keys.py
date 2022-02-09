@@ -17,6 +17,6 @@ typlist = ['ip-src','ip-dst','domain','url','hostname']
 # VirusTotal APIv3 + Search Parameters
 vtotal_key = '<VTOTAL API KEY HERE>'
 maltag = ['malware','malicious','spam']
-score = 5
+set_score = 5
 vlist = ['Snort IP sample list','PhishLabs','OpenPhish','AlienVault','Sophos','Fortinet','Google Safebrowsing','Abusix','EmergingThreats','MalwareDomainList','Kaspersky','URLhaus','Spamhaus','NotMining','Forcepoint ThreatSeeker','Certego','ESET','ThreatHive','FraudScore']
 vtrusted = ['Fortinet','Alienvault','Sophos','Google Safebrowsing','Abusix','Kaspersky','Forcepoint ThreatSeeker','ESET']

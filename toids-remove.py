@@ -34,7 +34,7 @@
 # - Added the creation of a default 'keys.py' if not present
 # v 1.2 (05/02/2022):
 # - Preparing VTotal implementation
-# v 1.3 (07/02/2022):
+# v 1.3 (08/02/2022):
 # - Implemented VirusTotal Mode (vt);
 # - Implemented Remove Old Mode (remold);
 # - Included arguments to launch the script;

@@ -83,9 +83,9 @@ event_id = []
 
 # ARGUMENTS CODE BLOCK
 # Creating the help menu structure
-parser = argparse.ArgumentParser(description='''Script used to remove IDS tag from older events and more, 
-	use --mode to activate either the IDS tag removal on old events (remold) or IDS tag removal based on the VTotal scan result (vt)
-	set --mintime and --maxtime to decide the temporal range''', prog="toids_remove.py")
+parser = argparse.ArgumentParser(description='''Script used to remove IDS tag from attributes on MISP, 
+	use --mode to activate either the IDS tag removal based on time (remold) or based on VTotal scan result (vt)
+	set --mintime and --maxtime to decide the temporal range for both modes.''', prog="toids_remove.py")
 
 # First argument: --mode
 # Accepts either remold (for IDS removal on old events) or vt (for IDS removal through VirusTotal analysis of the attribute_value, only IP\URL\Domains atm)

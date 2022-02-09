@@ -121,7 +121,7 @@ if args.mode is None or args.mode not in okargs:
 
 # If no parameter specified in mintime\maxtime set to default both
 if args.mintime is None and args.maxtime is None:
-	print('No mintime\maxtime specified, time range set to 0s/365d...')
+	print('No mintime\maxtime specified, time range set to 0s\365d...')
 	time.sleep(5)
 	mintime = '0s'
 	maxtime = '365d'

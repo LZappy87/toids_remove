@@ -167,7 +167,7 @@ try:
 	print(f'Attempting to connect to the Rest API of the MISP instance {misp_url}...')
 	misp = ExpandedPyMISP(misp_url, misp_key, misp_verifycert, cert=misp_client_cert)
 
-# Error Handling in case the script doesn't find any keys.py file, in this case the script generates a default file and end the script
+# Error Handling in case the script doesn't find any keys.py file, the script generates a default file and end the script
 except ImportError:
 	print('No keys.py file exists, generating a default file...')
 	y = 0

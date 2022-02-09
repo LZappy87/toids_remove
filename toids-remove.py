@@ -46,39 +46,42 @@
 # - More configuration parameters;
 # - Better error handling.
 ################################
-###### MISP LIBRARY BLOCK ######
+#### GENERIC LIBRARY BLOCK #####
 ################################
-# Importing MISP library
-from pymisp import ExpandedPyMISP
-# Needed to disable InsecureRequestWarning linked to self-signed of the MISP URL when opening a connection with the Rest API
-# Not needed if the destination MISP have a Certificate
-# Source: https://stackoverflow.com/questions/27981545/suppress-insecurerequestwarning-unverified-https-request-is-being-made-in-pytho
-import urllib3
-# This is for the function suppress_output (too much lines with big databases)
+# Libraries needed for suppress_output (too much lines with big databases)
 from contextlib import contextmanager
 import sys, os
-# Need it just to remove temporary files in the script folder
+# For the temporary file removal at the end of the script
 import shutil
 # Yes, now with execution timer®
 import time
 # Adding support for arguments
 import argparse
 ################################
+###### MISP LIBRARY BLOCK ######
+################################
+# Importing MISP library
+from pymisp import ExpandedPyMISP
+# Needed to disable InsecureRequestWarning linked to self-signed certificate of the MISP instance
+# Not needed if the destination MISP have a Certificate
+# Source: https://stackoverflow.com/questions/27981545/suppress-insecurerequestwarning-unverified-https-request-is-being-made-in-pytho
+import urllib3
+################################
 ##### VTOTAL LIBRARY BLOCK #####
 ################################
-# Needed to do the request towards the API
+# Library needed to execute the API request towards VTotal
 import requests
 # VTotal APIv3 accepts only encrypted URL for the URL check part
 import base64
-# Need for regex check with IP\URL\Domain
+# Need for regex check with IP\URL\Domain\Hostname
 import re
 ################################
 
-# Counter for attributes modified (and for show ofc)
+# Initialization of counters and variables
 i = 0
 event_id = []
 
-# Argument code block
+# ARGUMENTS CODE BLOCK
 # Creating the help menu structure
 parser = argparse.ArgumentParser(description='''Script used to remove IDS tag from older events and more, 
 	use --mode to activate either the IDS tag removal on old events (remold) or IDS tag removal based on the VTotal scan result (vt)
@@ -144,10 +147,10 @@ else:
 	print("Parameter in mintime\maxtime wrong.")
 	quit()
 
-# Aaaand the SSL error is gone (because certificates are overrated)
+# Disabling warning linked to connection towards MISP instance self-signed certificates
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
-# Function to suppress output (many thanks to the one who done it)
+# OUTPUT SUPPRESSION FUNCTION
 # Source: https://stackoverflow.com/questions/2125702/how-to-suppress-console-output-in-python
 @contextmanager
 def suppress_stdout():
@@ -160,6 +163,7 @@ def suppress_stdout():
         finally:
             sys.stdout = old_stdout
 
+# MISP REST API CONNECTION BLOCK
 # Establishing the connection with the MISP Rest API using the parameters imported from keys.py
 try:
 	# Including parameters for MISP connection from keys.py and attempt connection
@@ -194,6 +198,7 @@ except ImportError:
 		'# VirusTotal APIv3 + Search Parameters',
 		'vtotal_key = \'<VIRUSTOTAL API KEY HERE>\'',
 		'maltag = [\'malware\',\'malicious\']',
+		'set_score = 5',
 		'vlist = [\'Snort IP sample list\',\'PhishLabs\',\'OpenPhish\',\'AlienVault\',\'Sophos\',\'Fortinet\',\'Google Safebrowsing\',\'Abusix\',\'EmergingThreats\',\'MalwareDomainList\',\'Kaspersky\',\'URLhaus\',\'Spamhaus\',\'NotMining\',\'Forcepoint ThreatSeeker\',\'Certego\',\'ESET\',\'ThreatHive\',\'FraudScore\']',
 		'vtrusted = [\'Fortinet\',\'Alienvault\',\'Sophos\',\'Google Safebrowsing\',\'Abusix\',\'Kaspersky\',\'Forcepoint ThreatSeeker\',\'ESET\']'
 	]
@@ -211,7 +216,7 @@ except Exception:
 	print('There is a problem with the connection to MISP or the parameters in keys.py, the script will now exit...')
 	quit()
 
-
+# SCRIPT MODES BLOCK
 # Timer starts
 start_time = time.perf_counter()
 	
@@ -224,10 +229,15 @@ if args.mode == "vt":
 	# maltag: series of results linked to malicious detections
 	# vlist: list of vendors selected (score +1)
 	# vtrusted: list of trusted vendor (score +2)
+	# set_score: minimum score to take in consideration (default: 5)
 	# typlist: list of types selected (maybe a bad idea to move it on keys.py, whatever)
 	# misp_excluded_tags: decided to include this one too for tag exclusion (just in case)
-	from keys import vtotal_key, maltag, vlist, vtrusted, typlist, misp_excluded_tags
+	from keys import vtotal_key, maltag, vlist, vtrusted, typlist, misp_excluded_tags, set_score
 	
+	# Checking if set_score is initialized, if it's not set it to default (5)
+	if set_score is None:
+		set_score = 5
+		
 	# Set request paramenters towards the VTotal API
 	headers = {
     	"Accept": "application/json",
@@ -282,7 +292,7 @@ if args.mode == "vt":
 	    	# Send request to the API
 		response = requests.request("GET", url, headers=headers)
 
-		# Parsing the object in JSON
+		# Transform into a JSON (type: dict)
 		jsonresp = response.json()
 		
 		# Response check, if not 200 end the script and print the error details
@@ -294,26 +304,30 @@ if args.mode == "vt":
     			print("Error Type:", jsonresp['error']['code'])
     			print("Error Message: ", jsonresp['error']['message'])
     			quit()
-
+		
+		# Generating the score for the indicator based on the parameters stored into the keys.py
 		for f in vlist:
+			# Trusted vendor list gets +2 score
 			if f in vtrusted and jsonresp['data']['attributes']['last_analysis_results'][f]['result'] in maltag:
 				score += 2
+			# The others gets +1 score
 			elif f not in vtrusted and jsonresp['data']['attributes']['last_analysis_results'][f]['result'] in maltag:
 				score += 1
+			# If no malicious tags found set no score
 			else:
 				pass
-
+		
 		# If score >= 5 the IDS tag is not disabled, if < 4 it will be disabled.
-		if score >= 5:
-			# TODO: verbose mode
+		if score >= set_score:
+			# TODO: Verbose mode
 			print('[EventID ' + event_id + '] Tag not removed from ' + attribute_value + ', score: ' + str(score))
 			pass
 		else:
 			with suppress_stdout():
 				misp.update_attribute( { 'uuid': attribute_uuid, 'to_ids': 0})
 				misp.publish(event_id)
-			# TODO: verbose mode
 			i += 1
+			# TODO: Verbose mode
 			print('[EventID ' + event_id + '] Tag removed from ' + attribute_value + ', score: ' + str(score))
 
 
@@ -357,12 +371,13 @@ elif args.mode == "remold":
 		with suppress_stdout():
 			misp.update_attribute( { 'uuid': attribute_uuid, 'to_ids': 0})
 			misp.publish(event_id)
+		# TODO: Verbose mode
 		print('[EventID ' + event_id + '] Tag removed from ' + attribute_value)
 
-# Aaaand timer ends
+# Stop timer
 end_time = time.perf_counter()
 
-# Just for show and stats
+# Show brief results regading the action done
 print('###############')
 print(f'IDS Tags disabled successfully in {end_time - start_time:0.2f} seconds.')
 print('###############')

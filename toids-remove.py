@@ -49,6 +49,7 @@
 ################################
 # TODO:
 # - More configuration parameters;
+# - Better AbuseIPDB error handling;
 # - Better error handling.
 ################################
 #### GENERIC LIBRARY BLOCK #####

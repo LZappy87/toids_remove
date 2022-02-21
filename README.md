@@ -25,7 +25,7 @@ An idea developed from this article: https://www.vanimpe.eu/2019/09/24/tracking-
 
 ## USAGE
 
-![image](https://user-images.githubusercontent.com/47757757/155006125-53b41620-462d-406b-b9fd-d031231321c5.png)
+![image](https://user-images.githubusercontent.com/47757757/155006732-397a514c-03ec-42dd-8e94-110b255c42a5.png)
 
 [TODO] Make new video of the script
 

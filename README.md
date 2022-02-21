@@ -2,11 +2,11 @@
 
 ## CREATED BY: LZappy87
 
-## LAST VERSION: 1.3
+## LAST VERSION: 1.4
 
 ## CREATED ON: 03/02/2022
 
-## UPDATED ON: 08/02/2022
+## UPDATED ON: 21/02/2022
 
 ## FILES USED
 - toids-remove.py (this script)
@@ -17,6 +17,7 @@
 - PyMISP 2.4.152
 - Python 3.8.10
 - VirusTotal APIv3
+- AbuseIPDB APIv2
 
 ## DESCRIPTION
 This script it's used to disable the attribute 'to_ids' on MISP events, features removal of the IDS tag on old events or based on VirusTotal scan results.
@@ -24,11 +25,17 @@ An idea developed from this article: https://www.vanimpe.eu/2019/09/24/tracking-
 
 ## USAGE
 
-![image](https://user-images.githubusercontent.com/47757757/154987965-ac75294f-8508-47e8-a7d7-215c4fc911cb.png)
+![image](https://user-images.githubusercontent.com/47757757/155006125-53b41620-462d-406b-b9fd-d031231321c5.png)
 
 https://user-images.githubusercontent.com/47757757/153056860-dc4d2b04-a201-474a-a1c3-1a79c36cdda3.mp4
 
 ## CHANGELOG
+### v 1.4 (21/02/2022):
+- Added AbuseIPDB to the vt mode;
+- vt mode now is reputation mode;
+- remold mode is now rem mode;
+- Added minimal error handling for AbuseIPDB API.
+
 ### v 1.3 (08/02/2022):
 - Implemented VirusTotal Mode (vt);
 - Implemented Remove Old Mode (remold);
@@ -55,4 +62,5 @@ First release
 
 ## TODO:
 - More configuration parameters;
+- Better AbuseIPDB error handling;
 - Better error handling.

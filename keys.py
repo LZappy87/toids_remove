@@ -20,3 +20,7 @@ maltag = ['malware','malicious','spam']
 set_score = 5
 vlist = ['Snort IP sample list','PhishLabs','OpenPhish','AlienVault','Sophos','Fortinet','Google Safebrowsing','Abusix','EmergingThreats','MalwareDomainList','Kaspersky','URLhaus','Spamhaus','NotMining','Forcepoint ThreatSeeker','Certego','ESET','ThreatHive','FraudScore']
 vtrusted = ['Fortinet','Alienvault','Sophos','Google Safebrowsing','Abusix','Kaspersky','Forcepoint ThreatSeeker','ESET']
+
+# AbuseIPDB APIv2 + Search Parameters
+abipdb_key = '<ABUSEIPDB API KEY HERE>'
+ab_maxAge = '150'

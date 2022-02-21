@@ -107,7 +107,7 @@ formatter_class=argparse.RawTextHelpFormatter)
 # Accepts either rem (for IDS removal on old events) or reputation (for IDS removal through VirusTotal\AbuseIPDB reputation analysis of the attribute_value, only IP\URL\Domains atm)
 parser.add_argument(
 	'--mode',
-	metavar="<rem, reputation>", 
+	metavar="<option>", 
 	help="Remove IDS tags based on option selected.")
 
 # Second argument: --mintime

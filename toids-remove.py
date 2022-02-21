@@ -2,9 +2,9 @@
 ################################
 # NAME: MISP IDS Tag Remover for old entries
 # CREATED BY: LZappy87
-# ACTUAL VERSION: 1.3
+# ACTUAL VERSION: 1.4
 # CREATED ON: 03/02/2022
-# UPDATED ON: 08/02/2022
+# UPDATED ON: 21/02/2022
 # FILES USED: 
 # - toids-remove.py (this script)
 # - keys.py (the configuration file)
@@ -13,12 +13,13 @@
 # - PyMISP 2.4.152
 # - Python 3.8.10
 # - VirusTotal APIv3
+# - AbuseIPDB APIv2
 ################################
 # DESCRIPTION:
 # This script it's used to disable the attribute 'to_ids' on MISP events based on two modes:
-# - [--mode remold] Removing IDS tags from events older than the range passed with the arguments --mintime and --maxtime with the possibility to exclude
+# - [--mode rem] Removing IDS tags from events older than the range passed with the arguments --mintime and --maxtime with the possibility to exclude
 #	some events based on tags (like APT);
-# - [--mode vt] Removing IDS tags based on information gathered from selected vendors through the VirusTotal APIv3 in the time range specified with 
+# - [--mode reputation] Removing IDS tags based on information gathered from selected vendors through the VirusTotal APIv3 and AbuseIPDB APIv2 in the time range specified with 
 #	the arguments --mintime and --maxtime.
 ################################
 # CHANGELOG
@@ -40,7 +41,11 @@
 # - Included arguments to launch the script;
 # - Moved some variables to keys.py for better configuration;
 # - Included the 'published=True' search constraint (this should speed up the queries);
-# - Overall revamp of the code.
+# - Overall revamp of the code
+# v 1.4 (21/02/2022):
+# - Added AbuseIPDB to the vt mode;
+# - vt mode now is reputation mode;
+# - remold mode is now rem mode.
 ################################
 # TODO:
 # - More configuration parameters;
@@ -67,9 +72,9 @@ from pymisp import ExpandedPyMISP
 # Source: https://stackoverflow.com/questions/27981545/suppress-insecurerequestwarning-unverified-https-request-is-being-made-in-pytho
 import urllib3
 ################################
-##### VTOTAL LIBRARY BLOCK #####
+##### VTOTAL\ABUSEIPDB LIBRARY BLOCK #####
 ################################
-# Library needed to execute the API request towards VTotal
+# Library needed to execute the API request
 import requests
 # VTotal APIv3 accepts only encrypted URL for the URL check part
 import base64
@@ -80,18 +85,28 @@ import re
 # Initialization of counters and variables
 i = 0
 event_id = []
+abipdb = False
+abquerystring = None
+abresponse = None
+abjsonresp = []
+abscore = 0
+errorc = 0
 
 # ARGUMENTS CODE BLOCK
 # Creating the help menu structure
-parser = argparse.ArgumentParser(description='''Script used to remove IDS tag from attributes on MISP, 
-	use --mode to activate either the IDS tag removal based on time (remold) or based on VTotal scan result (vt)
-	set --mintime and --maxtime to decide the temporal range for both modes.''', prog="toids_remove.py")
+parser = argparse.ArgumentParser(description="Script used to remove IDS tag from attributes on MISP", 
+prog="toids_remove.py", 
+epilog='''This script it's used to disable the attribute 'to_ids' on MISP events based on two modes:
+	- [--mode rem] Removing IDS tags from events based only on time range;
+	- [--mode reputation] Removing IDS tags based on information gathered from selected vendors through the VirusTotal\AbuseIPDB API.
+In both cases you can use --mintime and --maxtime to adjust time range, options like tag exclusion, vendor list for VTotal and other can be changed by modifing the keys.py file.''',
+formatter_class=argparse.RawTextHelpFormatter)
 
 # First argument: --mode
-# Accepts either remold (for IDS removal on old events) or vt (for IDS removal through VirusTotal analysis of the attribute_value, only IP\URL\Domains atm)
+# Accepts either rem (for IDS removal on old events) or reputation (for IDS removal through VirusTotal\AbuseIPDB reputation analysis of the attribute_value, only IP\URL\Domains atm)
 parser.add_argument(
 	'--mode',
-	metavar="<vt, remold>", 
+	metavar="<rem, reputation>", 
 	help="Remove IDS tags based on option selected.")
 
 # Second argument: --mintime
@@ -114,27 +129,27 @@ parser.add_argument(
 args = parser.parse_args()
 
 # If no\wrong argument for --mode print help and exit
-okargs = ['vt','remold']
+okargs = ['rem','reputation']
 if args.mode is None or args.mode not in okargs:
 	parser.print_help()
 	quit()
 
 # If no parameter specified in mintime\maxtime set to default both
 if args.mintime is None and args.maxtime is None:
-	print('No mintime\maxtime specified, time range set to 0s\365d...')
-	time.sleep(5)
+	print('No mintime\maxtime specified, time range set to 0s\\365d...')
+	time.sleep(3)
 	mintime = '0s'
 	maxtime = '365d'
 # If no --mintime argument passed set to default mintime
 elif args.mintime is None and args.maxtime is not None:
 	print('No mintime specified, set to default (0s)...')
-	time.sleep(5)
+	time.sleep(3)
 	mintime = '0s'
 	maxtime = args.maxtime
 # If no --maxtime argument passed set to default maxtime
 elif args.mintime is not None and args.maxtime is None:
 	print('No maxtime specified, set to default (365d)...')
-	time.sleep(5)
+	time.sleep(3)
 	mintime = args.mintime
 	maxtime = '365d'
 
@@ -200,7 +215,11 @@ except ImportError:
 		'maltag = [\'malware\',\'malicious\']',
 		'set_score = 5',
 		'vlist = [\'Snort IP sample list\',\'PhishLabs\',\'OpenPhish\',\'AlienVault\',\'Sophos\',\'Fortinet\',\'Google Safebrowsing\',\'Abusix\',\'EmergingThreats\',\'MalwareDomainList\',\'Kaspersky\',\'URLhaus\',\'Spamhaus\',\'NotMining\',\'Forcepoint ThreatSeeker\',\'Certego\',\'ESET\',\'ThreatHive\',\'FraudScore\']',
-		'vtrusted = [\'Fortinet\',\'Alienvault\',\'Sophos\',\'Google Safebrowsing\',\'Abusix\',\'Kaspersky\',\'Forcepoint ThreatSeeker\',\'ESET\']'
+		'vtrusted = [\'Fortinet\',\'Alienvault\',\'Sophos\',\'Google Safebrowsing\',\'Abusix\',\'Kaspersky\',\'Forcepoint ThreatSeeker\',\'ESET\']',
+		'',
+		'# AbuseIPDB APIv2 + Search Parameters',
+		'abipdb_key = \'<ABUSEIPDB API KEY HERE>\'',
+		'ab_maxAge = \'150\''
 	]
 		
 	for y in range(len(deffile)):
@@ -220,11 +239,12 @@ except Exception:
 # Timer starts
 start_time = time.perf_counter()
 	
-# VT part: remove IDS tags based on VirusTotal scan results
+# VT\AbuseIPDB part: remove IDS tags based on VirusTotal\AbuseIPDB reputational scan results
+# Note: AbuseIPDB part working only for IP indicator
 # STATUS: 100% (COMPLETE)
-if args.mode == "vt":
+if args.mode == "reputation":
 	
-	# Importing arguments from keys.py for VT
+	# Importing arguments from keys.py
 	# vtotal_key: the API key of VTotal
 	# maltag: series of results linked to malicious detections
 	# vlist: list of vendors selected (score +1)
@@ -232,18 +252,28 @@ if args.mode == "vt":
 	# set_score: minimum score to take in consideration (default: 5)
 	# typlist: list of types selected (maybe a bad idea to move it on keys.py, whatever)
 	# misp_excluded_tags: decided to include this one too for tag exclusion (just in case)
-	from keys import vtotal_key, maltag, vlist, vtrusted, typlist, misp_excluded_tags, set_score
+	# abipdb_key: the API key of AbuseIPDB
+	# ab_maxAge: parameter to return only the reports for the last XX days (default 150)
+	from keys import vtotal_key, maltag, vlist, vtrusted, typlist, misp_excluded_tags, set_score, abipdb_key, ab_maxAge
 	
 	# Checking if set_score is initialized, if it's not set it to default (5)
 	if set_score is None:
 		set_score = 5
 		
 	# Set request paramenters towards the VTotal API
-	headers = {
+	vtheaders = {
     	"Accept": "application/json",
     	"x-apikey": vtotal_key
 	}
 	
+	# Set request parameters towards AbuseIPDB API	
+	aburl = "https://api.abuseipdb.com/api/v2/check"
+
+	abheaders = {
+		"Accept": "application/json",
+		"Key": abipdb_key
+	}
+
 	# Searching and generating a list of the events where attributes with the parameters from keys.py
 	try:
 		# Just in case if no tags are specified into keys.py
@@ -277,50 +307,79 @@ if args.mode == "vt":
 		
 		# IP
 		if re.match("^(?:25[0-5]|2[0-4]\d|[0-1]?\d{1,2})(?:\.(?:25[0-5]|2[0-4]\d|[0-1]?\d{1,2})){3}$", attribute_value):
-     			url = "https://www.virustotal.com/api/v3/ip_addresses/" + attribute_value
+     			vturl = "https://www.virustotal.com/api/v3/ip_addresses/" + attribute_value
+     			abquerystring = {
+				"ipAddress": attribute_value,
+				"maxAgeInDays": ab_maxAge
+			}
     	
 	    	# URL
 		elif re.match("^(http:\/\/|https:\/\/).+$", attribute_value):
      			# VirusTotal API accepts only encoded URL, so we need to calculate the base64 of the url to append to the end of the final URL
      			url_id = base64.urlsafe_b64encode(attribute_value.encode()).decode().strip("=")
-     			url = "https://www.virustotal.com/api/v3/urls/" + url_id
+     			vturl = "https://www.virustotal.com/api/v3/urls/" + url_id
     	
 	    	# Domain\Hostname
 		elif re.match("^((?!-))(xn--)?[a-z0-9][a-z0-9-_]{0,61}[a-z0-9]{0,1}\.(xn--)?([a-z0-9\-]{1,61}|[a-z0-9-]{1,30}\.[a-z]{2,})$", attribute_value):
-			url = "https://www.virustotal.com/api/v3/domains/" + attribute_value
+			vturl = "https://www.virustotal.com/api/v3/domains/" + attribute_value
 
 	    	# Send request to the API
-		response = requests.request("GET", url, headers=headers)
+		vtresponse = requests.request(method="GET", url=vturl, headers=vtheaders)
+		if abquerystring is not None:
+			abresponse = requests.request(method='GET', url=aburl, headers=abheaders, params=abquerystring)
 
 		# Transform into a JSON (type: dict)
-		jsonresp = response.json()
+		vtjsonresp = vtresponse.json()
+		if abresponse is not None:
+			abjsonresp = abresponse.json()
+			abscore = abjsonresp['data']['abuseConfidenceScore']
 		
-		# Response check, if not 200 end the script and print the error details
-		httpresponse = str(response)
-		if "20" in httpresponse:
+		# Response check, if not 200 end the script and print the error details (ONLY FOR VTotal API)
+		vthttpresponse = str(vtresponse)
+		abhttpresponse = str(abresponse)
+		if "20" in vthttpresponse and "20" in abhttpresponse:
     			pass
 		else:
-    			print("No connection established")
-    			print("Error Type:", jsonresp['error']['code'])
-    			print("Error Message: ", jsonresp['error']['message'])
-    			quit()
+			if "20" not in vthttpresponse:
+				print("No connection established with VirusTotal API")
+				print("Error Type: ", vtjsonresp['error']['code'])
+				print("Error Message: ", vtjsonresp['error']['message'])
+			if "20" not in abhttpresponse:
+				print("No connection established with AbuseIPDB API, problems found:")
+				if abipdb_key is None or abipdb_key == '':
+					print("API key is missing, please set it on keys.py")
+					errorc += 1
+				if int(ab_maxAge) > 365 or int(ab_maxAge) < 1:
+					print("Wrong parameter for ab_maxAge, set it between 1 and 365 on keys.py")
+					errorc += 1
+				if errorc == 0:
+					print("Unknown error, please check the keys.py informations")
+					print("Further info: " + str(abjsonresp))
+			quit()
 		
 		# Generating the score for the indicator based on the parameters stored into the keys.py
 		for f in vlist:
 			# Trusted vendor list gets +2 score
-			if f in vtrusted and jsonresp['data']['attributes']['last_analysis_results'][f]['result'] in maltag:
+			if f in vtrusted and vtjsonresp['data']['attributes']['last_analysis_results'][f]['result'] in maltag:
 				score += 2
 			# The others gets +1 score
-			elif f not in vtrusted and jsonresp['data']['attributes']['last_analysis_results'][f]['result'] in maltag:
+			elif f not in vtrusted and vtjsonresp['data']['attributes']['last_analysis_results'][f]['result'] in maltag:
 				score += 1
 			# If no malicious tags found set no score
 			else:
 				pass
+		# If score on AbuseIPDB >= 50 add another +5 to the score
+		if abscore >= 50:
+			score += 5
+			abipdb = True
+		else:
+			abipdb = False
+			pass
 		
 		# If score >= 5 the IDS tag is not disabled, if < 4 it will be disabled.
 		if score >= set_score:
 			# TODO: Verbose mode
-			print('[EventID ' + event_id + '] Tag not removed from ' + attribute_value + ', score: ' + str(score))
+			print('[EventID ' + event_id + '] Tag not removed from ' + attribute_value + ', score: ' + str(score) + ', AbuseIPDB: ' + str(abipdb))
 			pass
 		else:
 			with suppress_stdout():
@@ -328,12 +387,12 @@ if args.mode == "vt":
 				misp.publish(event_id)
 			i += 1
 			# TODO: Verbose mode
-			print('[EventID ' + event_id + '] Tag removed from ' + attribute_value + ', score: ' + str(score))
+			print('[EventID ' + event_id + '] Tag removed from ' + attribute_value + ', score: ' + str(score) + ', AbuseIPDB: ' + str(abipdb))
 
 
-# REMOLD part: remove IDS tags from old entries
+# REM part: remove IDS tags based only on time range
 # STATUS: 100% (COMPLETE)
-elif args.mode == "remold":		
+elif args.mode == "rem":		
 
 	# Import arguments from keys.py for REMOLD
 	# misp_excluded_tags: this is used as a filter to exclude events with a certain tag(s)

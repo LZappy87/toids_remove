@@ -64,5 +64,5 @@ First release
 
 ## TODO:
 - More configuration parameters;
-- Better AbuseIPDB error handling;
+- Implement Greynoise API into the script;
 - Better error handling.

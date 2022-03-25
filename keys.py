@@ -24,3 +24,6 @@ vtrusted = ['Fortinet','Alienvault','Sophos','Google Safebrowsing','Abusix','Kas
 # AbuseIPDB APIv2 + Search Parameters
 abipdb_key = '<ABUSEIPDB API KEY HERE>'
 ab_maxAge = '150'
+
+# Greynoise API Parameters
+grey_key = '<GREYNOISE API KEY HERE>'

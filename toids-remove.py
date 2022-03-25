@@ -59,7 +59,8 @@ import re
 # Initialization of counters and variables
 i = 0
 event_id = []
-vttyperes = None
+vttyperes = ''
+vtotaltags = []
 abipdb = False
 abquerystring = None
 abresponse = None
@@ -286,7 +287,7 @@ if args.mode == "reputation":
 		print('Check if all the informations needed are into the keys.py file, the script will now exit...')
 		quit()
 	
-	print('Removing IDS attribute on events with ' + args.mode + 'mode (score < ' + set_score + ') and time range ' + mintime + ' : ' + maxtime + '...' )
+	print('Removing IDS attribute on events with ' + args.mode + 'mode (score < ' + str(set_score) + ') and time range ' + mintime + ' : ' + maxtime + '...' )
 	
 	for attribute in result['Attribute']:
 	
@@ -375,6 +376,7 @@ if args.mode == "reputation":
 		# Generating the score for the indicator based on the parameters stored into the keys.py
 		for f in vlist:
 			vttyperes = vtjsonresp['data']['attributes']['last_analysis_results'][f]['result']
+			vtotaltags.append(vttyperes)
 			# Trusted vendor list gets +2 score
 			if f in vtrusted and vttyperes in maltag:
 				score += 2
@@ -409,7 +411,10 @@ if args.mode == "reputation":
 		# If score >= setscore (configured on keys.py) the IDS tag is not disabled, if < setscore it will be disabled.
 		if score >= set_score:
 			# TODO: Verbose mode
-			print('[EventID ' + event_id + '] Tag not removed from ' + attribute_value + ', total score: ' + str(score) + ', VirusTotal: ' + vttyperes + ', AbuseIPDB: ' + str(abipdb) + ', Greynoise: ' + str(grclassified) + ' (' + str(grname) + ')') 
+			vtotaltagsfinal = str(set(vtotaltags))
+			print('[EventID ' + event_id + '] Tag not removed from ' + attribute_value + ', total score: ' + str(score) + ', VirusTotal: ' + vtotaltagsfinal + ', AbuseIPDB: ' + str(abipdb) + ', Greynoise: ' + str(grclassified) + ' (' + str(grname) + ')')
+			vtotaltags = []
+			vtotaltagsfinal = ''
 			pass
 		else:
 			with suppress_stdout():
@@ -417,7 +422,10 @@ if args.mode == "reputation":
 				misp.publish(event_id)
 			i += 1
 			# TODO: Verbose mode
-			print('[EventID ' + event_id + '] Tag removed from ' + attribute_value + ', total score: ' + str(score) + ', VirusTotal: ' + vttyperes + ', AbuseIPDB: ' + str(abipdb) + ', Greynoise: ' + str(grclassified) + ' (' + str(grname) + ')')
+			vtotaltagsfinal = str(set(vtotaltags))
+			print('[EventID ' + event_id + '] Tag removed from ' + attribute_value + ', total score: ' + str(score) + ', VirusTotal: ' + vtotaltagsfinal + ', AbuseIPDB: ' + str(abipdb) + ', Greynoise: ' + str(grclassified) + ' (' + str(grname) + ')')
+			vtotaltags = []
+			vtotaltagsfinal = ''
 
 
 # REM part: remove IDS tags based only on time range

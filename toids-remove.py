@@ -38,8 +38,6 @@ import time
 import argparse
 # Output format in table
 from prettytable import PrettyTable
-# Progress bar
-import progressbar
 ################################
 ###### MISP LIBRARY BLOCK ######
 ################################

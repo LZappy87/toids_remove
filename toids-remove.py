@@ -11,9 +11,10 @@
 # TESTED WITH: 
 # - MISP 2.4.152
 # - PyMISP 2.4.152
-# - Python 3.8.10
+# - Python 3.8
 # - VirusTotal APIv3
 # - AbuseIPDB APIv2
+# - Greynoise APIv3
 ################################
 # DESCRIPTION:
 # This script it's used to disable the attribute 'to_ids' on MISP events based on two modes:
@@ -22,35 +23,7 @@
 # - [--mode reputation] Removing IDS tags based on information gathered from selected vendors through the VirusTotal APIv3 and AbuseIPDB APIv2 in the time range specified with 
 #	the arguments --mintime and --maxtime.
 ################################
-# CHANGELOG
-# v 1.0 (03/02/2022):
-# First release
-# v 1.1 (04/02/2022):
-# - Removed old search string (it was not getting all the attributes);
-# - Added discrimination between events with a certain tag, in this case "APT" through build_complex_query (thanks Giuseppe for the idea);
-# - Various code revamp (not necessary linked to the aforemended changes);
-# - Moved misp_client_cert to keys.py;
-# - Added: misp_excluded_tags (for tag exclusion), mintime and maxtime (for time reference regarding the query on MISP) on keys.py;
-# - Added various, basilar, error handling;
-# - Added the creation of a default 'keys.py' if not present
-# v 1.2 (05/02/2022):
-# - Preparing VTotal implementation
-# v 1.3 (08/02/2022):
-# - Implemented VirusTotal Mode (vt);
-# - Implemented Remove Old Mode (remold);
-# - Included arguments to launch the script;
-# - Moved some variables to keys.py for better configuration;
-# - Included the 'published=True' search constraint (this should speed up the queries);
-# - Overall revamp of the code
-# v 1.4 (21/02/2022):
-# - Added AbuseIPDB to the vt mode;
-# - vt mode now is reputation mode;
-# - remold mode is now rem mode.
-################################
-# TODO:
-# - More configuration parameters;
-# - Better AbuseIPDB error handling;
-# - Better error handling.
+######### SCRIPT START #########
 ################################
 #### GENERIC LIBRARY BLOCK #####
 ################################
@@ -89,7 +62,15 @@ event_id = []
 abipdb = False
 abquerystring = None
 abresponse = None
+grresponse = None
 abjsonresp = []
+grjsonresp = []
+grmessage = None
+grnoise = None
+grriot = None
+grclass = None
+grclassified = None
+grname = None
 abscore = 0
 errorc = 0
 
@@ -220,7 +201,10 @@ except ImportError:
 		'',
 		'# AbuseIPDB APIv2 + Search Parameters',
 		'abipdb_key = \'<ABUSEIPDB API KEY HERE>\'',
-		'ab_maxAge = \'150\''
+		'ab_maxAge = \'150\'',
+		'',
+		'# Greynoise API parameters',
+		'grey_key = \'<GREYNOISE API KEY HERE>\''
 	]
 		
 	for y in range(len(deffile)):
@@ -255,7 +239,8 @@ if args.mode == "reputation":
 	# misp_excluded_tags: decided to include this one too for tag exclusion (just in case)
 	# abipdb_key: the API key of AbuseIPDB
 	# ab_maxAge: parameter to return only the reports for the last XX days (default 150)
-	from keys import vtotal_key, maltag, vlist, vtrusted, typlist, misp_excluded_tags, set_score, abipdb_key, ab_maxAge
+	# grey_key: the API key of Greynoise
+	from keys import vtotal_key, maltag, vlist, vtrusted, typlist, misp_excluded_tags, set_score, abipdb_key, ab_maxAge, grey_key
 	
 	# Checking if set_score is initialized, if it's not set it to default (5)
 	if set_score is None:
@@ -273,6 +258,12 @@ if args.mode == "reputation":
 	abheaders = {
 		"Accept": "application/json",
 		"Key": abipdb_key
+	}
+	
+	# Set request parameters towards the Greynoise API
+	
+	grheaders = {
+		"key": grey_key
 	}
 
 	# Searching and generating a list of the events where attributes with the parameters from keys.py
@@ -308,37 +299,55 @@ if args.mode == "reputation":
 		
 		# IP
 		if re.match("^(?:25[0-5]|2[0-4]\d|[0-1]?\d{1,2})(?:\.(?:25[0-5]|2[0-4]\d|[0-1]?\d{1,2})){3}$", attribute_value):
-     			vturl = "https://www.virustotal.com/api/v3/ip_addresses/" + attribute_value
-     			abquerystring = {
+			grurl = "https://api.greynoise.io/v3/community/" + attribute_value
+			vturl = "https://www.virustotal.com/api/v3/ip_addresses/" + attribute_value
+			abquerystring = {
 				"ipAddress": attribute_value,
 				"maxAgeInDays": ab_maxAge
 			}
-    	
+						    	
 	    	# URL
 		elif re.match("^(http:\/\/|https:\/\/).+$", attribute_value):
      			# VirusTotal API accepts only encoded URL, so we need to calculate the base64 of the url to append to the end of the final URL
+     			grurl = None
      			url_id = base64.urlsafe_b64encode(attribute_value.encode()).decode().strip("=")
      			vturl = "https://www.virustotal.com/api/v3/urls/" + url_id
     	
 	    	# Domain\Hostname
 		elif re.match("^((?!-))(xn--)?[a-z0-9][a-z0-9-_]{0,61}[a-z0-9]{0,1}\.(xn--)?([a-z0-9\-]{1,61}|[a-z0-9-]{1,30}\.[a-z]{2,})$", attribute_value):
+			grurl = None
 			vturl = "https://www.virustotal.com/api/v3/domains/" + attribute_value
 
 	    	# Send request to the API
-		vtresponse = requests.request(method="GET", url=vturl, headers=vtheaders)
+		vtresponse = requests.request(method='GET', url=vturl, headers=vtheaders)
 		if abquerystring is not None:
 			abresponse = requests.request(method='GET', url=aburl, headers=abheaders, params=abquerystring)
+		if grurl is not None:
+			grresponse = requests.request(method='GET', url=grurl, headers=grheaders)
 
 		# Transform into a JSON (type: dict)
+		vthttpresponse = str(vtresponse)
 		vtjsonresp = vtresponse.json()
 		if abresponse is not None:
+			abhttpresponse = str(abresponse)
 			abjsonresp = abresponse.json()
 			abscore = abjsonresp['data']['abuseConfidenceScore']
+		if grresponse is not None:
+			grhttpresponse = str(grresponse)
+			grjsonresp = grresponse.json()
+			grnoise = grjsonresp['noise']
+			grriot = grjsonresp['riot']
+			grmessage = grjsonresp['message']
+			if "404" in grhttpresponse:
+				grclass = 'unknown'
+				grname = 'unknown'
+			else:
+				grclass = grjsonresp['classification']
+				grname = grjsonresp['name']
 		
-		# Response check, if not 200 end the script and print the error details (ONLY FOR VTotal API)
-		vthttpresponse = str(vtresponse)
-		abhttpresponse = str(abresponse)
-		if "20" in vthttpresponse and "20" in abhttpresponse:
+		
+		# Response check, if not 200 end the script and print the error details
+		if "20" in vthttpresponse or ("20" in vthttpresponse and "20" in abhttpresponse and ("20" in grhttpresponse or "404" in grhttpresponse)):
     			pass
 		else:
 			if "20" not in vthttpresponse:
@@ -356,6 +365,10 @@ if args.mode == "reputation":
 				if errorc == 0:
 					print("Unknown error, please check the keys.py informations")
 					print("Further info: " + str(abjsonresp))
+			if "20" not in grhttpresponse:
+				print("An error occurred with Greynoise API")
+				print("Status: ", grhttpresponse)
+				print("Message: ", str(grmessage))
 			quit()
 		
 		# Generating the score for the indicator based on the parameters stored into the keys.py
@@ -369,7 +382,7 @@ if args.mode == "reputation":
 			# If no malicious tags found set no score
 			else:
 				pass
-		# If score on AbuseIPDB >= 50 add another +5 to the score
+		# If score on AbuseIPDB >= 50 add another +5 to the score (IP ONLY)
 		if abscore >= 50:
 			score += 5
 			abipdb = True
@@ -377,10 +390,24 @@ if args.mode == "reputation":
 			abipdb = False
 			pass
 		
-		# If score >= 5 the IDS tag is not disabled, if < 4 it will be disabled.
+		# Generating the score for Greynoise (IP ONLY)
+		# if not generating noise, found into RIOT database (lecit IP) or classified as benign, assign no score
+		if grnoise == 'false' or grriot == 'true' or grclass == 'benign':
+			score += 0
+			grclassified = grclass
+		# if generating noise but not classified, score +1
+		if grnoise == 'true' and grclass == 'unknown':
+			score += 1
+			grclassified = grclass
+		# if generating noise and not classified as unknown or benign, score +3
+		if grnoise == 'true' and (grclass != 'unknown' or grclass != 'benign'):
+			score += 3
+			grclassified = grclass
+		
+		# If score >= setscore (configured on keys.py) the IDS tag is not disabled, if < setscore it will be disabled.
 		if score >= set_score:
 			# TODO: Verbose mode
-			print('[EventID ' + event_id + '] Tag not removed from ' + attribute_value + ', score: ' + str(score) + ', AbuseIPDB: ' + str(abipdb))
+			print('[EventID ' + event_id + '] Tag not removed from ' + attribute_value + ', score: ' + str(score) + ', AbuseIPDB: ' + str(abipdb) + ', Greynoise: ' + str(grclassified) + ' (' + str(grname) + ')') 
 			pass
 		else:
 			with suppress_stdout():
@@ -388,7 +415,7 @@ if args.mode == "reputation":
 				misp.publish(event_id)
 			i += 1
 			# TODO: Verbose mode
-			print('[EventID ' + event_id + '] Tag removed from ' + attribute_value + ', score: ' + str(score) + ', AbuseIPDB: ' + str(abipdb))
+			print('[EventID ' + event_id + '] Tag removed from ' + attribute_value + ', score: ' + str(score) + ', AbuseIPDB: ' + str(abipdb) + ', Greynoise: ' + str(grclassified) + ' (' + str(grname) + ')')
 
 
 # REM part: remove IDS tags based only on time range

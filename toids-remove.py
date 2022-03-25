@@ -36,6 +36,10 @@ import shutil
 import time
 # Adding support for arguments
 import argparse
+# Output format in table
+from prettytable import PrettyTable
+# Progress bar
+import progressbar
 ################################
 ###### MISP LIBRARY BLOCK ######
 ################################
@@ -75,6 +79,13 @@ grclassified = None
 grname = None
 abscore = 0
 errorc = 0
+actualid = 0
+
+# Generating tables for final visualization
+finaloutputrep = PrettyTable()
+finaloutputrep.field_names = ['EventID','Status','Attribute','Type','Score','VT Tags','AbuseIPDB','Greynoise','Info']
+finaloutputrem = PrettyTable()
+finaloutputrem.field_names = ['EventID','Status','Attribute','Type']
 
 # ARGUMENTS CODE BLOCK
 # Creating the help menu structure
@@ -289,6 +300,7 @@ if args.mode == "reputation":
 	
 	print('Removing IDS attribute on events with ' + args.mode + 'mode (score < ' + str(set_score) + ') and time range ' + mintime + ' : ' + maxtime + '...' )
 	
+	# Extracting attributes from MISPr
 	for attribute in result['Attribute']:
 	
 		# This is a counter that will be used as a global score to decide if a indicator should be or not delisted from IDS
@@ -298,6 +310,7 @@ if args.mode == "reputation":
 		attribute_uuid = attribute['uuid']
 		event_id = attribute['event_id']
 		attribute_value = attribute['value']
+		attribute_type = attribute['type']
 		
 		# IP
 		if re.match("^(?:25[0-5]|2[0-4]\d|[0-1]?\d{1,2})(?:\.(?:25[0-5]|2[0-4]\d|[0-1]?\d{1,2})){3}$", attribute_value):
@@ -412,9 +425,20 @@ if args.mode == "reputation":
 		if score >= set_score:
 			# TODO: Verbose mode
 			vtotaltagsfinal = str(set(vtotaltags))
-			print('[EventID ' + event_id + '] Tag not removed from ' + attribute_value + ', total score: ' + str(score) + ', VirusTotal: ' + vtotaltagsfinal + ', AbuseIPDB: ' + str(abipdb) + ', Greynoise: ' + str(grclassified) + ' (' + str(grname) + ')')
+			# print('[EventID ' + event_id + '] Tag not removed from ' + attribute_value + ', total score: ' + str(score) + ', VirusTotal: ' + vtotaltagsfinal + ', AbuseIPDB: ' + str(abipdb) + ', Greynoise: ' + str(grclassified) + ' (' + str(grname) + ')')
+			finaloutputrep.add_row([event_id,"Not Removed",attribute_value,attribute_type,str(score),vtotaltagsfinal,str(abipdb),str(grclassified),str(grname)])
 			vtotaltags = []
 			vtotaltagsfinal = ''
+			if actualid == 0:
+				actualid = event_id
+				print("Tag IDS removal on event " + actualid + " started")
+			elif actualid == event_id:
+				pass
+			elif actualid != event_id or actualid > 0:
+				print("Tag IDS removal on event " + actualid + " finished")
+				actualid = eventid
+				print("Tag IDS removal on event " + actualid + " started")
+			
 			pass
 		else:
 			with suppress_stdout():
@@ -423,9 +447,20 @@ if args.mode == "reputation":
 			i += 1
 			# TODO: Verbose mode
 			vtotaltagsfinal = str(set(vtotaltags))
-			print('[EventID ' + event_id + '] Tag removed from ' + attribute_value + ', total score: ' + str(score) + ', VirusTotal: ' + vtotaltagsfinal + ', AbuseIPDB: ' + str(abipdb) + ', Greynoise: ' + str(grclassified) + ' (' + str(grname) + ')')
+			# print('[EventID ' + event_id + '] Tag removed from ' + attribute_value + ', total score: ' + str(score) + ', VirusTotal: ' + vtotaltagsfinal + ', AbuseIPDB: ' + str(abipdb) + ', Greynoise: ' + str(grclassified) + ' (' + str(grname) + ')')
+			finaloutputrep.add_row([event_id,"Removed",attribute_value,attribute_type,str(score),vtotaltagsfinal,str(abipdb),str(grclassified),str(grname)])
+			if actualid == 0:
+				actualid = event_id
+				print("Tag IDS removal on event " + actualid + " started")
+			elif actualid == event_id:
+				pass
+			elif actualid != event_id or actualid > 0:
+				print("Tag IDS removal on event " + actualid + " finished (" + str(i) + " attributes changed)")
+				actualid = eventid
+				print("Tag IDS removal on event " + actualid + " started")
 			vtotaltags = []
 			vtotaltagsfinal = ''
+			
 
 
 # REM part: remove IDS tags based only on time range
@@ -469,17 +504,36 @@ elif args.mode == "rem":
 			misp.update_attribute( { 'uuid': attribute_uuid, 'to_ids': 0})
 			misp.publish(event_id)
 		# TODO: Verbose mode
-		print('[EventID ' + event_id + '] Tag removed from ' + attribute_value)
+		# print('[EventID ' + event_id + '] Tag removed from ' + attribute_value)
+		finaloutputrem.add_row([event_id, "Removed", attribute_value,attribute_type])
+		if actualid == 0:
+			actualid = event_id
+			print("Tag IDS removal on event " + actualid + " started")
+		elif actualid == event_id:
+			pass
+		elif actualid != event_id or actualid > 0:
+			print("Tag IDS removal on event " + actualid + " finished (" + str(i) + " attributes changed)")
+			actualid = eventid
+			print("Tag IDS removal on event " + actualid + " started")
+		
+		
 
 # Stop timer
+print("Tag IDS removal on event " + actualid + " finished (" + str(i) + " attributes changed)")
+print("All events processed.")
 end_time = time.perf_counter()
+print('###############')
 
-# Show brief results regading the action done
+# Show results regading the action done
+if args.mode == 'reputation':
+	print(finaloutputrep)
+elif args.mode == 'rem':
+	print(finaloutputrem)
 print('###############')
 print(f'IDS Tags disabled successfully in {end_time - start_time:0.2f} seconds.')
 print('###############')
 print('Total Events modified:',len(event_id))
-print('Total IDS Attributes modified:',i)
+print('Total IDS Attributes modified:', i)
 print('###############')
 
 # Republishing all the modified events (if present)

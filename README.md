@@ -50,7 +50,7 @@ An idea developed from this article: https://www.vanimpe.eu/2019/09/24/tracking-
 https://user-images.githubusercontent.com/47757757/153056860-dc4d2b04-a201-474a-a1c3-1a79c36cdda3.mp4
 
 ## CHANGELOG
-### v 1.5 (21/02/2022):
+### v 1.5 (25/03/2022):
 - Added Greynoise API to reputation mode;
 - Added tabled results at the end of the script;
 - Removed unnecessary script header informations.

@@ -43,6 +43,8 @@ An idea developed from this article: https://www.vanimpe.eu/2019/09/24/tracking-
 
 ![image](https://user-images.githubusercontent.com/47757757/155006732-397a514c-03ec-42dd-8e94-110b255c42a5.png)
 
+![image](https://user-images.githubusercontent.com/47757757/160189535-ca80df4f-dc6a-42df-86c1-422d0bfe5945.png)
+
 [TODO] Make new video of the script
 
 https://user-images.githubusercontent.com/47757757/153056860-dc4d2b04-a201-474a-a1c3-1a79c36cdda3.mp4

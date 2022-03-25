@@ -59,6 +59,7 @@ import re
 # Initialization of counters and variables
 i = 0
 event_id = []
+vttyperes = None
 abipdb = False
 abquerystring = None
 abresponse = None
@@ -80,7 +81,7 @@ parser = argparse.ArgumentParser(description="Script used to remove IDS tag from
 prog="toids_remove.py", 
 epilog='''This script it's used to disable the attribute 'to_ids' on MISP events based on two modes:
 	- [--mode rem] Removing IDS tags from events based only on time range;
-	- [--mode reputation] Removing IDS tags based on information gathered from selected vendors through the VirusTotal\AbuseIPDB API.
+	- [--mode reputation] Removing IDS tags based on information gathered from selected vendors through the VirusTotal\AbuseIPDB\Greynoise API.
 In both cases you can use --mintime and --maxtime to adjust time range, options like tag exclusion, vendor list for VTotal and other can be changed by modifing the keys.py file.''',
 formatter_class=argparse.RawTextHelpFormatter)
 
@@ -285,7 +286,7 @@ if args.mode == "reputation":
 		print('Check if all the informations needed are into the keys.py file, the script will now exit...')
 		quit()
 	
-	print('Removing IDS attribute on events with ' + args.mode + ' mode and time range ' + mintime + ' : ' + maxtime + '...' )
+	print('Removing IDS attribute on events with ' + args.mode + 'mode (score < ' + set_score + ') and time range ' + mintime + ' : ' + maxtime + '...' )
 	
 	for attribute in result['Attribute']:
 	
@@ -373,11 +374,12 @@ if args.mode == "reputation":
 		
 		# Generating the score for the indicator based on the parameters stored into the keys.py
 		for f in vlist:
+			vttyperes = vtjsonresp['data']['attributes']['last_analysis_results'][f]['result']
 			# Trusted vendor list gets +2 score
-			if f in vtrusted and vtjsonresp['data']['attributes']['last_analysis_results'][f]['result'] in maltag:
+			if f in vtrusted and vttyperes in maltag:
 				score += 2
 			# The others gets +1 score
-			elif f not in vtrusted and vtjsonresp['data']['attributes']['last_analysis_results'][f]['result'] in maltag:
+			elif f not in vtrusted and vttyperes in maltag:
 				score += 1
 			# If no malicious tags found set no score
 			else:
@@ -407,7 +409,7 @@ if args.mode == "reputation":
 		# If score >= setscore (configured on keys.py) the IDS tag is not disabled, if < setscore it will be disabled.
 		if score >= set_score:
 			# TODO: Verbose mode
-			print('[EventID ' + event_id + '] Tag not removed from ' + attribute_value + ', score: ' + str(score) + ', AbuseIPDB: ' + str(abipdb) + ', Greynoise: ' + str(grclassified) + ' (' + str(grname) + ')') 
+			print('[EventID ' + event_id + '] Tag not removed from ' + attribute_value + ', total score: ' + str(score) + ', VirusTotal: ' + vttyperes + ', AbuseIPDB: ' + str(abipdb) + ', Greynoise: ' + str(grclassified) + ' (' + str(grname) + ')') 
 			pass
 		else:
 			with suppress_stdout():
@@ -415,7 +417,7 @@ if args.mode == "reputation":
 				misp.publish(event_id)
 			i += 1
 			# TODO: Verbose mode
-			print('[EventID ' + event_id + '] Tag removed from ' + attribute_value + ', score: ' + str(score) + ', AbuseIPDB: ' + str(abipdb) + ', Greynoise: ' + str(grclassified) + ' (' + str(grname) + ')')
+			print('[EventID ' + event_id + '] Tag removed from ' + attribute_value + ', total score: ' + str(score) + ', VirusTotal: ' + vttyperes + ', AbuseIPDB: ' + str(abipdb) + ', Greynoise: ' + str(grclassified) + ' (' + str(grname) + ')')
 
 
 # REM part: remove IDS tags based only on time range

@@ -28,7 +28,7 @@
 - time
 - argparse
 - prettytable (PrettyTable)
-- pymisp (EpandedPyMISP)
+- pymisp (ExpandedPyMISP)
 - urllib3
 - requests
 - base64

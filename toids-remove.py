@@ -235,8 +235,8 @@ except Exception:
 # Timer starts
 start_time = time.perf_counter()
 	
-# VT\AbuseIPDB part: remove IDS tags based on VirusTotal\AbuseIPDB reputational scan results
-# Note: AbuseIPDB part working only for IP indicator
+# Reputation part: remove IDS tags based on VirusTotal\AbuseIPDB\Greynoise reputational scan results
+# Note: AbuseIPDB and Greynoise part working only for IP indicator
 # STATUS: 100% (COMPLETE)
 if args.mode == "reputation":
 	
@@ -461,7 +461,7 @@ if args.mode == "reputation":
 			
 
 
-# REM part: remove IDS tags based only on time range
+# Remove part: remove IDS tags based only on time range
 # STATUS: 100% (COMPLETE)
 elif args.mode == "rem":		
 

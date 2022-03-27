@@ -2,9 +2,9 @@
 ################################
 # NAME: MISP IDS Tag Remover for old entries
 # CREATED BY: LZappy87
-# ACTUAL VERSION: 1.4
+# ACTUAL VERSION: 1.6
 # CREATED ON: 03/02/2022
-# UPDATED ON: 21/02/2022
+# UPDATED ON: 27/03/2022
 # FILES USED: 
 # - toids-remove.py (this script)
 # - keys.py (the configuration file)
@@ -20,23 +20,23 @@
 # This script it's used to disable the attribute 'to_ids' on MISP events based on two modes:
 # - [--mode rem] Removing IDS tags from events older than the range passed with the arguments --mintime and --maxtime with the possibility to exclude
 #	some events based on tags (like APT);
-# - [--mode reputation] Removing IDS tags based on information gathered from selected vendors through the VirusTotal APIv3 and AbuseIPDB APIv2 in the time range specified with 
+# - [--mode reputation] Removing IDS tags based on information gathered from selected vendors through the VirusTotal, AbuseIPDB and Greynoise API in the time range specified with 
 #	the arguments --mintime and --maxtime.
 ################################
 ######### SCRIPT START #########
 ################################
 #### GENERIC LIBRARY BLOCK #####
 ################################
-# Libraries needed for suppress_output (too much lines with big databases)
+# Libraries needed for suppress_output (to suppress ouput on console while script works)
 from contextlib import contextmanager
 import sys, os
 # For the temporary file removal at the end of the script
 import shutil
-# Yes, now with execution timer®
+# For timer needs
 import time
 # Adding support for arguments
 import argparse
-# Output format in table
+# Output format in table (deprecates old output mode)
 from prettytable import PrettyTable
 ################################
 ###### MISP LIBRARY BLOCK ######
@@ -44,7 +44,7 @@ from prettytable import PrettyTable
 # Importing MISP library
 from pymisp import ExpandedPyMISP
 # Needed to disable InsecureRequestWarning linked to self-signed certificate of the MISP instance
-# Not needed if the destination MISP have a Certificate
+# Not needed if the destination MISP have a valid certificate
 # Source: https://stackoverflow.com/questions/27981545/suppress-insecurerequestwarning-unverified-https-request-is-being-made-in-pytho
 import urllib3
 ################################
@@ -58,7 +58,7 @@ import base64
 import re
 ################################
 
-# Initialization of counters and variables
+# COUNTERS\VARIABLES INITIALIZATION BLOCK
 i = 0
 event_id = []
 vttyperes = ''
@@ -79,13 +79,14 @@ abscore = 0
 errorc = 0
 actualid = 0
 
+# VISUAL OUTPUT INITIALIZATION BLOCK
 # Generating tables for final visualization
 finaloutputrep = PrettyTable()
 finaloutputrep.field_names = ['EventID','Status','Attribute','Type','Score','VT Tags','AbuseIPDB','Greynoise','Info']
 finaloutputrem = PrettyTable()
 finaloutputrem.field_names = ['EventID','Status','Attribute','Type']
 
-# ARGUMENTS CODE BLOCK
+# INITIALIZATION AND DEFINITION OF CLI ARGUMENTS BLOCK
 # Creating the help menu structure
 parser = argparse.ArgumentParser(description="Script used to remove IDS tag from attributes on MISP", 
 prog="toids_remove.py", 
@@ -96,7 +97,7 @@ In both cases you can use --mintime and --maxtime to adjust time range, options 
 formatter_class=argparse.RawTextHelpFormatter)
 
 # First argument: --mode
-# Accepts either rem (for IDS removal on old events) or reputation (for IDS removal through VirusTotal\AbuseIPDB reputation analysis of the attribute_value, only IP\URL\Domains atm)
+# Accepts either rem (for IDS removal on old events) or reputation (for IDS removal through VirusTotal\AbuseIPDB\Greynoise reputation analysis of the attribute_value, only IP\URL\Domains atm)
 parser.add_argument(
 	'--mode',
 	metavar="<option>", 
@@ -118,7 +119,7 @@ parser.add_argument(
 	type=str,
 	help="Set max time (in s/m/d) - Default 365d (1 Year)")
 
-# Parsing the argument in input
+# Parsing the arguments in input
 args = parser.parse_args()
 
 # If no\wrong argument for --mode print help and exit
@@ -147,18 +148,18 @@ elif args.mintime is not None and args.maxtime is None:
 	maxtime = '365d'
 
 # if arguments are present set them directly
-# Just to make sure no wrong arguments are passed, match only arguments
-# with 4 digits (1-9999) and either a d\m\s as a final character
+# Just to make sure no wrong arguments are passed on mintime\maxtime
+# match only arguments starting with 4 digits (1-9999) and either a d\m\s as a final character
 if re.match("^[0-9]{1,4}[d,m,s]$", mintime) and re.match("^[0-9]{1,4}[d,m,s]$", maxtime):
 	pass
 else:
 	print("Parameter in mintime\maxtime wrong.")
 	quit()
 
-# Disabling warning linked to connection towards MISP instance self-signed certificates
+# Disabling warning linked to connection attempts towards MISP instances with self-signed certificates
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
-# OUTPUT SUPPRESSION FUNCTION
+# OUTPUT SUPPRESSION FUNCTION BLOCK
 # Source: https://stackoverflow.com/questions/2125702/how-to-suppress-console-output-in-python
 @contextmanager
 def suppress_stdout():
@@ -205,7 +206,7 @@ except ImportError:
 		'',
 		'# VirusTotal APIv3 + Search Parameters',
 		'vtotal_key = \'<VIRUSTOTAL API KEY HERE>\'',
-		'maltag = [\'malware\',\'malicious\']',
+		'maltag = [\'malware\',\'malicious\',\'suspicious\',\'phishing\',\'spam\'']',
 		'set_score = 5',
 		'vlist = [\'Snort IP sample list\',\'PhishLabs\',\'OpenPhish\',\'AlienVault\',\'Sophos\',\'Fortinet\',\'Google Safebrowsing\',\'Abusix\',\'EmergingThreats\',\'MalwareDomainList\',\'Kaspersky\',\'URLhaus\',\'Spamhaus\',\'NotMining\',\'Forcepoint ThreatSeeker\',\'Certego\',\'ESET\',\'ThreatHive\',\'FraudScore\']',
 		'vtrusted = [\'Fortinet\',\'Alienvault\',\'Sophos\',\'Google Safebrowsing\',\'Abusix\',\'Kaspersky\',\'Forcepoint ThreatSeeker\',\'ESET\']',
@@ -217,7 +218,8 @@ except ImportError:
 		'# Greynoise API parameters',
 		'grey_key = \'<GREYNOISE API KEY HERE>\''
 	]
-		
+	
+	# Write the default keys.py and end script	
 	for y in range(len(deffile)):
 		f.write(deffile[y])
 		f.write("\r\n")
@@ -235,8 +237,8 @@ except Exception:
 # Timer starts
 start_time = time.perf_counter()
 	
-# Reputation part: remove IDS tags based on VirusTotal\AbuseIPDB\Greynoise reputational scan results
-# Note: AbuseIPDB and Greynoise part working only for IP indicator
+# REPUTATION MODE: remove IDS tags based on VirusTotal\AbuseIPDB\Greynoise datasets
+# Note: AbuseIPDB and Greynoise part works only for IP indicators
 # STATUS: 100% (COMPLETE)
 if args.mode == "reputation":
 	
@@ -255,6 +257,7 @@ if args.mode == "reputation":
 	
 	# Checking if set_score is initialized, if it's not set it to default (5)
 	if set_score is None:
+		print("No score set on keys.py, setting it to default (5)")
 		set_score = 5
 		
 	# Set request paramenters towards the VTotal API
@@ -293,15 +296,15 @@ if args.mode == "reputation":
 
 	# Generic Exception Handling, Same here, to be revised...
 	except Exception:
-		print('Check if all the informations needed are into the keys.py file, the script will now exit...')
+		print('Check if all the informations are present and set correctly into the keys.py, the script will now exit...')
 		quit()
 	
 	print('Removing IDS attribute on events with ' + args.mode + 'mode (score < ' + str(set_score) + ') and time range ' + mintime + ' : ' + maxtime + '...' )
 	
-	# Extracting attributes from MISPr
+	# Extracting attributes from MISP
 	for attribute in result['Attribute']:
 	
-		# This is a counter that will be used as a global score to decide if a indicator should be or not delisted from IDS
+		# Initializing the score counter
 		score = 0
 				
 		# Gets needed informations from MISP
@@ -310,7 +313,7 @@ if args.mode == "reputation":
 		attribute_value = attribute['value']
 		attribute_type = attribute['type']
 		
-		# IP
+		# IP (All API involved)
 		if re.match("^(?:25[0-5]|2[0-4]\d|[0-1]?\d{1,2})(?:\.(?:25[0-5]|2[0-4]\d|[0-1]?\d{1,2})){3}$", attribute_value):
 			grurl = "https://api.greynoise.io/v3/community/" + attribute_value
 			vturl = "https://www.virustotal.com/api/v3/ip_addresses/" + attribute_value
@@ -319,28 +322,32 @@ if args.mode == "reputation":
 				"maxAgeInDays": ab_maxAge
 			}
 						    	
-	    	# URL
+	    	# URL (Virustotal ONLY)
 		elif re.match("^(http:\/\/|https:\/\/).+$", attribute_value):
      			# VirusTotal API accepts only encoded URL, so we need to calculate the base64 of the url to append to the end of the final URL
      			grurl = None
+			abquerystring = None
      			url_id = base64.urlsafe_b64encode(attribute_value.encode()).decode().strip("=")
      			vturl = "https://www.virustotal.com/api/v3/urls/" + url_id
     	
-	    	# Domain\Hostname
+	    	# Domain\Hostname (Virustotal ONLY)
 		elif re.match("^((?!-))(xn--)?[a-z0-9][a-z0-9-_]{0,61}[a-z0-9]{0,1}\.(xn--)?([a-z0-9\-]{1,61}|[a-z0-9-]{1,30}\.[a-z]{2,})$", attribute_value):
 			grurl = None
+			abquerystring = None
 			vturl = "https://www.virustotal.com/api/v3/domains/" + attribute_value
 
-	    	# Send request to the API
+	    	# Retrieving informations from API's datasets
 		vtresponse = requests.request(method='GET', url=vturl, headers=vtheaders)
 		if abquerystring is not None:
 			abresponse = requests.request(method='GET', url=aburl, headers=abheaders, params=abquerystring)
 		if grurl is not None:
 			grresponse = requests.request(method='GET', url=grurl, headers=grheaders)
 
-		# Transform into a JSON (type: dict)
+		# Transform into JSON the response received
 		vthttpresponse = str(vtresponse)
 		vtjsonresp = vtresponse.json()
+		
+		# Works only if indicator is different from IP
 		if abresponse is not None:
 			abhttpresponse = str(abresponse)
 			abjsonresp = abresponse.json()
@@ -351,6 +358,7 @@ if args.mode == "reputation":
 			grnoise = grjsonresp['noise']
 			grriot = grjsonresp['riot']
 			grmessage = grjsonresp['message']
+			# Note: 404 for Greynoise is a "no informations for the IP found" but it still gives minor informations
 			if "404" in grhttpresponse:
 				grclass = 'unknown'
 				grname = 'unknown'
@@ -359,7 +367,8 @@ if args.mode == "reputation":
 				grname = grjsonresp['name']
 		
 		
-		# Response check, if not 200 end the script and print the error details
+		# Error handling for API responses
+		# First line are the accepted cases
 		if "20" in vthttpresponse or ("20" in vthttpresponse and "20" in abhttpresponse and ("20" in grhttpresponse or "404" in grhttpresponse)):
     			pass
 		else:
@@ -384,19 +393,21 @@ if args.mode == "reputation":
 				print("Message: ", str(grmessage))
 			quit()
 		
-		# Generating the score for the indicator based on the parameters stored into the keys.py
+		# Generating the score for Virustotal based on the vendor lists present on keys.py
 		for f in vlist:
 			vttyperes = vtjsonresp['data']['attributes']['last_analysis_results'][f]['result']
-			vtotaltags.append(vttyperes)
-			# Trusted vendor list gets +2 score
+			# Trusted vendor list gets +2 score and append tag
 			if f in vtrusted and vttyperes in maltag:
 				score += 2
-			# The others gets +1 score
+				vtotaltags.append(vttyperes)
+			# The others gets +1 score, also append tag
 			elif f not in vtrusted and vttyperes in maltag:
 				score += 1
-			# If no malicious tags found set no score
+				vtotaltags.append(vttyperes)
+			# If no malicious tags found set no score and no tag append
 			else:
 				pass
+		
 		# If score on AbuseIPDB >= 50 add another +5 to the score (IP ONLY)
 		if abscore >= 50:
 			score += 5
@@ -421,9 +432,19 @@ if args.mode == "reputation":
 		
 		# If score >= setscore (configured on keys.py) the IDS tag is not disabled, if < setscore it will be disabled.
 		if score >= set_score:
-			# TODO: Verbose mode
+			
+			# TODO: Verbose mode for table
+			
+			# Take only distinct tags, if no tags present set "No Tags" as value
 			vtotaltagsfinal = str(set(vtotaltags))
-			# print('[EventID ' + event_id + '] Tag not removed from ' + attribute_value + ', total score: ' + str(score) + ', VirusTotal: ' + vtotaltagsfinal + ', AbuseIPDB: ' + str(abipdb) + ', Greynoise: ' + str(grclassified) + ' (' + str(grname) + ')')
+			if vtotaltagsfinal == "set()":
+				vtotaltagsfinal = "No Tags"
+				
+			# OLD output (DEPRECATED)
+			# print('[EventID ' + event_id + '] Tag not removed from ' + attribute_value + ', total score: ' + str(score) + '
+			# \ , VirusTotal: ' + vtotaltagsfinal + ', AbuseIPDB: ' + str(abipdb) + ', Greynoise: ' + str(grclassified) + ' (' + str(grname) + ')')
+			
+			# NEW output (PrettyTables)
 			finaloutputrep.add_row([event_id,"Not Removed",attribute_value,attribute_type,str(score),vtotaltagsfinal,str(abipdb),str(grclassified),str(grname)])
 			vtotaltags = []
 			vtotaltagsfinal = ''
@@ -439,14 +460,27 @@ if args.mode == "reputation":
 			
 			pass
 		else:
+			# Console output suppression
 			with suppress_stdout():
 				misp.update_attribute( { 'uuid': attribute_uuid, 'to_ids': 0})
 				misp.publish(event_id)
 			i += 1
-			# TODO: Verbose mode
+			
+			# TODO: Verbose mode for table
+			
+			# Take only distinct tags, if no tags present set "No Tags" as value
 			vtotaltagsfinal = str(set(vtotaltags))
-			# print('[EventID ' + event_id + '] Tag removed from ' + attribute_value + ', total score: ' + str(score) + ', VirusTotal: ' + vtotaltagsfinal + ', AbuseIPDB: ' + str(abipdb) + ', Greynoise: ' + str(grclassified) + ' (' + str(grname) + ')')
+			if vtotaltagsfinal == "set()":
+				vtotaltagsfinal = "No Tags"
+			
+			# OLD output (DEPRECATED)
+			# print('[EventID ' + event_id + '] Tag removed from ' + attribute_value + ', total score: ' + str(score) + '
+			# \ , VirusTotal: ' + vtotaltagsfinal + ', AbuseIPDB: ' + str(abipdb) + ', Greynoise: ' + str(grclassified) + ' (' + str(grname) + ')')
+			
+			# NEW output (PrettyTables)
 			finaloutputrep.add_row([event_id,"Removed",attribute_value,attribute_type,str(score),vtotaltagsfinal,str(abipdb),str(grclassified),str(grname)])
+			
+			# Start\end operations on EventID notification
 			if actualid == 0:
 				actualid = event_id
 				print("Tag IDS removal on event " + actualid + " started")
@@ -461,11 +495,11 @@ if args.mode == "reputation":
 			
 
 
-# Remove part: remove IDS tags based only on time range
+# REMOVE MODE: remove IDS tags based only on time range
 # STATUS: 100% (COMPLETE)
 elif args.mode == "rem":		
 
-	# Import arguments from keys.py for REMOLD
+	# Import arguments from keys.py
 	# misp_excluded_tags: this is used as a filter to exclude events with a certain tag(s)
 	from keys import misp_excluded_tags
 
@@ -501,8 +535,13 @@ elif args.mode == "rem":
 		with suppress_stdout():
 			misp.update_attribute( { 'uuid': attribute_uuid, 'to_ids': 0})
 			misp.publish(event_id)
+			
 		# TODO: Verbose mode
+		
+		# OLD output (DEPRECATED)
 		# print('[EventID ' + event_id + '] Tag removed from ' + attribute_value)
+		
+		# NEW output (PrettyTables)
 		finaloutputrem.add_row([event_id, "Removed", attribute_value,attribute_type])
 		if actualid == 0:
 			actualid = event_id
@@ -522,11 +561,12 @@ print("All events processed.")
 end_time = time.perf_counter()
 print('###############')
 
-# Show results regading the action done
+# Show results regading the action done based on mode selected
 if args.mode == 'reputation':
 	print(finaloutputrep)
 elif args.mode == 'rem':
 	print(finaloutputrem)
+
 print('###############')
 print(f'IDS Tags disabled successfully in {end_time - start_time:0.2f} seconds.')
 print('###############')
@@ -545,3 +585,4 @@ else:
 print('Cleaning temporary files...')
 shutil.rmtree("__pycache__")
 print('Done!')
+print('Script execution terminated.')

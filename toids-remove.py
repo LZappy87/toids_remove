@@ -235,8 +235,8 @@ except Exception:
 # Timer starts
 start_time = time.perf_counter()
 	
-# VT\AbuseIPDB part: remove IDS tags based on VirusTotal\AbuseIPDB reputational scan results
-# Note: AbuseIPDB part working only for IP indicator
+# Reputation part: remove IDS tags based on VirusTotal\AbuseIPDB\Greynoise reputational scan results
+# Note: AbuseIPDB and Greynoise part working only for IP indicator
 # STATUS: 100% (COMPLETE)
 if args.mode == "reputation":
 	
@@ -255,7 +255,6 @@ if args.mode == "reputation":
 	
 	# Checking if set_score is initialized, if it's not set it to default (5)
 	if set_score is None:
-		print("No score set on keys.py, setting it to default (5)")
 		set_score = 5
 		
 	# Set request paramenters towards the VTotal API
@@ -388,18 +387,16 @@ if args.mode == "reputation":
 		# Generating the score for the indicator based on the parameters stored into the keys.py
 		for f in vlist:
 			vttyperes = vtjsonresp['data']['attributes']['last_analysis_results'][f]['result']
+			vtotaltags.append(vttyperes)
 			# Trusted vendor list gets +2 score
 			if f in vtrusted and vttyperes in maltag:
 				score += 2
-				vtotaltags.append(vttyperes)
 			# The others gets +1 score
 			elif f not in vtrusted and vttyperes in maltag:
 				score += 1
-				vtotaltags.append(vttyperes)
 			# If no malicious tags found set no score
 			else:
 				pass
-		
 		# If score on AbuseIPDB >= 50 add another +5 to the score (IP ONLY)
 		if abscore >= 50:
 			score += 5
@@ -426,8 +423,6 @@ if args.mode == "reputation":
 		if score >= set_score:
 			# TODO: Verbose mode
 			vtotaltagsfinal = str(set(vtotaltags))
-			if vtotaltagsfinal == "set()":
-				vtotaltagsfinal = "No Tags"
 			# print('[EventID ' + event_id + '] Tag not removed from ' + attribute_value + ', total score: ' + str(score) + ', VirusTotal: ' + vtotaltagsfinal + ', AbuseIPDB: ' + str(abipdb) + ', Greynoise: ' + str(grclassified) + ' (' + str(grname) + ')')
 			finaloutputrep.add_row([event_id,"Not Removed",attribute_value,attribute_type,str(score),vtotaltagsfinal,str(abipdb),str(grclassified),str(grname)])
 			vtotaltags = []
@@ -451,8 +446,6 @@ if args.mode == "reputation":
 			# TODO: Verbose mode
 			vtotaltagsfinal = str(set(vtotaltags))
 			# print('[EventID ' + event_id + '] Tag removed from ' + attribute_value + ', total score: ' + str(score) + ', VirusTotal: ' + vtotaltagsfinal + ', AbuseIPDB: ' + str(abipdb) + ', Greynoise: ' + str(grclassified) + ' (' + str(grname) + ')')
-			if vtotaltagsfinal == "set()":
-				vtotaltagsfinal = "No Tags"
 			finaloutputrep.add_row([event_id,"Removed",attribute_value,attribute_type,str(score),vtotaltagsfinal,str(abipdb),str(grclassified),str(grname)])
 			if actualid == 0:
 				actualid = event_id
@@ -468,7 +461,7 @@ if args.mode == "reputation":
 			
 
 
-# REM part: remove IDS tags based only on time range
+# Remove part: remove IDS tags based only on time range
 # STATUS: 100% (COMPLETE)
 elif args.mode == "rem":		
 

@@ -2,7 +2,7 @@
 ################################
 # NAME: MISP IDS Tag Remover for old entries
 # CREATED BY: LZappy87
-# ACTUAL VERSION: 1.6
+# ACTUAL VERSION: 1.4
 # CREATED ON: 03/02/2022
 # UPDATED ON: 27/03/2022
 # FILES USED: 
@@ -146,11 +146,15 @@ elif args.mintime is not None and args.maxtime is None:
 	time.sleep(3)
 	mintime = args.mintime
 	maxtime = '365d'
+# Else assign args value to mintime\maxtime
+else:
+	mintime = args.mintime
+	maxtime = args.maxtime
 
 # if arguments are present set them directly
 # Just to make sure no wrong arguments are passed on mintime\maxtime
 # match only arguments starting with 4 digits (1-9999) and either a d\m\s as a final character
-if re.match("^[0-9]{1,4}[d,m,s]$", mintime) and re.match("^[0-9]{1,4}[d,m,s]$", maxtime):
+if re.match("^[0-9]{1,4}[d,m,s]$", str(mintime)) and re.match("^[0-9]{1,4}[d,m,s]$", str(maxtime)):
 	pass
 else:
 	print("Parameter in mintime\maxtime wrong.")
@@ -206,7 +210,7 @@ except ImportError:
 		'',
 		'# VirusTotal APIv3 + Search Parameters',
 		'vtotal_key = \'<VIRUSTOTAL API KEY HERE>\'',
-		'maltag = [\'malware\',\'malicious\',\'suspicious\',\'phishing\',\'spam\'']',
+		'maltag = [\'malware\',\'malicious\',\'suspicious\',\'phishing\',\'spam\']',
 		'set_score = 5',
 		'vlist = [\'Snort IP sample list\',\'PhishLabs\',\'OpenPhish\',\'AlienVault\',\'Sophos\',\'Fortinet\',\'Google Safebrowsing\',\'Abusix\',\'EmergingThreats\',\'MalwareDomainList\',\'Kaspersky\',\'URLhaus\',\'Spamhaus\',\'NotMining\',\'Forcepoint ThreatSeeker\',\'Certego\',\'ESET\',\'ThreatHive\',\'FraudScore\']',
 		'vtrusted = [\'Fortinet\',\'Alienvault\',\'Sophos\',\'Google Safebrowsing\',\'Abusix\',\'Kaspersky\',\'Forcepoint ThreatSeeker\',\'ESET\']',
@@ -325,10 +329,10 @@ if args.mode == "reputation":
 	    	# URL (Virustotal ONLY)
 		elif re.match("^(http:\/\/|https:\/\/).+$", attribute_value):
      			# VirusTotal API accepts only encoded URL, so we need to calculate the base64 of the url to append to the end of the final URL
-     			grurl = None
+			grurl = None
 			abquerystring = None
-     			url_id = base64.urlsafe_b64encode(attribute_value.encode()).decode().strip("=")
-     			vturl = "https://www.virustotal.com/api/v3/urls/" + url_id
+			url_id = base64.urlsafe_b64encode(attribute_value.encode()).decode().strip("=")
+			vturl = "https://www.virustotal.com/api/v3/urls/" + url_id
     	
 	    	# Domain\Hostname (Virustotal ONLY)
 		elif re.match("^((?!-))(xn--)?[a-z0-9][a-z0-9-_]{0,61}[a-z0-9]{0,1}\.(xn--)?([a-z0-9\-]{1,61}|[a-z0-9-]{1,30}\.[a-z]{2,})$", attribute_value):

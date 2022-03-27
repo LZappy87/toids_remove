@@ -2,7 +2,7 @@
 ################################
 # NAME: MISP IDS Tag Remover for old entries
 # CREATED BY: LZappy87
-# ACTUAL VERSION: 1.4
+# ACTUAL VERSION: 1.6
 # CREATED ON: 03/02/2022
 # UPDATED ON: 27/03/2022
 # FILES USED: 

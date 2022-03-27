@@ -41,13 +41,13 @@ An idea developed from this article: https://www.vanimpe.eu/2019/09/24/tracking-
 
 ## USAGE
 
-![image](https://user-images.githubusercontent.com/47757757/155006732-397a514c-03ec-42dd-8e94-110b255c42a5.png)
+![image](https://user-images.githubusercontent.com/47757757/160293018-15acd81e-6e72-43c0-9d17-1df80283038c.png)
 
-![image](https://user-images.githubusercontent.com/47757757/160189535-ca80df4f-dc6a-42df-86c1-422d0bfe5945.png)
+![image](https://user-images.githubusercontent.com/47757757/160292993-367a606c-30fc-4ebf-948f-76d0d51b5f14.png)
 
-[TODO] Make new video of the script
 
-https://user-images.githubusercontent.com/47757757/153056860-dc4d2b04-a201-474a-a1c3-1a79c36cdda3.mp4
+https://user-images.githubusercontent.com/47757757/160293805-00fc37a2-87ca-46a9-b6c6-40a83c52cca2.mp4
+
 
 ## CHANGELOG
 

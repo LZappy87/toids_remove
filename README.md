@@ -4,6 +4,7 @@
 [![CodeFactor.io](https://img.shields.io/codefactor/grade/github/LZappy87/toids_remove)](https://www.codefactor.io/repository/github/lzappy87/toids_remove/overview/main)
 [![License](https://img.shields.io/badge/License-GPL--3.0_License-blue)](/LICENSE)
 [![issues - toids_remove](https://img.shields.io/github/issues/LZappy87/toids_remove)](https://github.com/LZappy87/toids_remove/issues)
+
 [![stars - toids_remove](https://img.shields.io/github/stars/LZappy87/toids_remove?style=social)](https://github.com/LZappy87/toids_remove)
 [![forks - toids_remove](https://img.shields.io/github/forks/LZappy87/toids_remove?style=social)](https://github.com/LZappy87/toids_remove)
 

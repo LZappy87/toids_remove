@@ -2,9 +2,9 @@
 ################################
 # NAME: MISP IDS Tag Remover for old entries
 # CREATED BY: LZappy87
-# ACTUAL VERSION: 1.6
+# ACTUAL VERSION: 1.7
 # CREATED ON: 03/02/2022
-# UPDATED ON: 27/03/2022
+# UPDATED ON: 29/03/2022
 # FILES USED: 
 # - toids-remove.py (this script)
 # - keys.py (the configuration file)
@@ -82,7 +82,7 @@ actualid = 0
 # VISUAL OUTPUT INITIALIZATION BLOCK
 # Generating tables for final visualization
 finaloutputrep = PrettyTable()
-finaloutputrep.field_names = ['EventID','Status','Attribute','Type','Score','VT Tags','AbuseIPDB','Greynoise','Info']
+finaloutputrep.field_names = ['EventID','Status','MISP Sightings','Attribute','Type','Score','VT Tags','AbuseIPDB','Greynoise','Info']
 finaloutputrem = PrettyTable()
 finaloutputrem.field_names = ['EventID','Status','Attribute','Type']
 
@@ -313,9 +313,17 @@ if args.mode == "reputation":
 				
 		# Gets needed informations from MISP
 		attribute_uuid = attribute['uuid']
+		attribute_id = attribute['id']
 		event_id = attribute['event_id']
 		attribute_value = attribute['value']
 		attribute_type = attribute['type']
+		
+		
+		# Pull sightings for attribute + initialization variables
+		sightings = misp.search_sightings(context='attribute', context_id=attribute_id)
+		sgtp = 0
+		sgfp = 0
+		sightingscore = ''
 		
 		# IP (All API involved)
 		if re.match("^(?:25[0-5]|2[0-4]\d|[0-1]?\d{1,2})(?:\.(?:25[0-5]|2[0-4]\d|[0-1]?\d{1,2})){3}$", attribute_value):
@@ -443,13 +451,26 @@ if args.mode == "reputation":
 			vtotaltagsfinal = str(set(vtotaltags))
 			if vtotaltagsfinal == "set()":
 				vtotaltagsfinal = "No Tags"
-				
+			
+			# Adding sight on attribute (type = 1, sighting)
+			with suppress_stdout():
+				misp.add_sighting({"values": attribute_value, "type": 0, "source": "toids_remove_sg"}, attribute_id)
+								
 			# OLD output (DEPRECATED)
 			# print('[EventID ' + event_id + '] Tag not removed from ' + attribute_value + ', total score: ' + str(score) + '
 			# \ , VirusTotal: ' + vtotaltagsfinal + ', AbuseIPDB: ' + str(abipdb) + ', Greynoise: ' + str(grclassified) + ' (' + str(grname) + ')')
 			
+			#Calculate number of sightings for the attribute
+			for sg in sightings:
+				if '0' in sg['Sighting']['type']:
+					sgtp+= 1
+				elif '1' in sg['Sighting']['type']:
+					sgfp+= 1
+			sightingscore = "sg: " + str(sgtp) + ", fp: " + str(sgfp)
+			
 			# NEW output (PrettyTables)
-			finaloutputrep.add_row([event_id,"Not Removed",attribute_value,attribute_type,str(score),vtotaltagsfinal,str(abipdb),str(grclassified),str(grname)])
+			finaloutputrep.add_row([event_id,"Not Removed",sightingscore,attribute_value,attribute_type,str(score),vtotaltagsfinal,str(abipdb),str(grclassified),str(grname)])
+						
 			vtotaltags = []
 			vtotaltagsfinal = ''
 			if actualid == 0:
@@ -466,7 +487,10 @@ if args.mode == "reputation":
 		else:
 			# Console output suppression
 			with suppress_stdout():
+				# Remove IDS tag
 				misp.update_attribute( { 'uuid': attribute_uuid, 'to_ids': 0})
+				# Adding sight on attribute (type = 0, false_positive)
+				misp.add_sighting({"values": attribute_value, "type": 1, "source": "toids_remove_fp"}, attribute_id)
 				misp.publish(event_id)
 			i += 1
 			
@@ -481,8 +505,16 @@ if args.mode == "reputation":
 			# print('[EventID ' + event_id + '] Tag removed from ' + attribute_value + ', total score: ' + str(score) + '
 			# \ , VirusTotal: ' + vtotaltagsfinal + ', AbuseIPDB: ' + str(abipdb) + ', Greynoise: ' + str(grclassified) + ' (' + str(grname) + ')')
 			
+			#Calculate number of sightings for the attribute
+			for sg in sightings:
+				if '0' in sg['Sighting']['type']:
+					sgtp+= 1
+				elif '1' in sg['Sighting']['type']:
+					sgfp+= 1
+			sightingscore = "sg: " + str(sgtp) + ", fp: " + str(sgfp)
+			
 			# NEW output (PrettyTables)
-			finaloutputrep.add_row([event_id,"Removed",attribute_value,attribute_type,str(score),vtotaltagsfinal,str(abipdb),str(grclassified),str(grname)])
+			finaloutputrep.add_row([event_id,"Removed",sightingscore,attribute_value,attribute_type,str(score),vtotaltagsfinal,str(abipdb),str(grclassified),str(grname)])
 			
 			# Start\end operations on EventID notification
 			if actualid == 0:
@@ -496,9 +528,7 @@ if args.mode == "reputation":
 				print("Tag IDS removal on event " + actualid + " started")
 			vtotaltags = []
 			vtotaltagsfinal = ''
-			
-
-
+		
 # REMOVE MODE: remove IDS tags based only on time range
 # STATUS: 100% (COMPLETE)
 elif args.mode == "rem":		

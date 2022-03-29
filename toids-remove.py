@@ -224,7 +224,8 @@ except ImportError:
 	]
 	
 	# Write the default keys.py and end script	
-	for y in range(len(deffile)):
+	# for y in range(len(deffile)):
+	for y, item in enumerate(deffile):
 		f.write(deffile[y])
 		f.write("\r\n")
 	
@@ -426,7 +427,6 @@ if args.mode == "reputation":
 			abipdb = True
 		else:
 			abipdb = False
-			pass
 		
 		# Generating the score for Greynoise (IP ONLY)
 		# if not generating noise, found into RIOT database (lecit IP) or classified as benign, assign no score
@@ -444,8 +444,6 @@ if args.mode == "reputation":
 		
 		# If score >= setscore (configured on keys.py) the IDS tag is not disabled, if < setscore it will be disabled.
 		if score >= set_score:
-			
-			# TODO: Verbose mode for table
 			
 			# Take only distinct tags, if no tags present set "No Tags" as value
 			vtotaltagsfinal = str(set(vtotaltags))
@@ -483,7 +481,6 @@ if args.mode == "reputation":
 				actualid = eventid
 				print("Tag IDS removal on event " + actualid + " started")
 			
-			pass
 		else:
 			# Console output suppression
 			with suppress_stdout():
@@ -493,8 +490,6 @@ if args.mode == "reputation":
 				misp.add_sighting({"values": attribute_value, "type": 1, "source": "toids_remove_fp"}, attribute_id)
 				misp.publish(event_id)
 			i += 1
-			
-			# TODO: Verbose mode for table
 			
 			# Take only distinct tags, if no tags present set "No Tags" as value
 			vtotaltagsfinal = str(set(vtotaltags))

@@ -2,11 +2,11 @@
 
 ## CREATED BY: LZappy87
 
-## LAST VERSION: 1.6
+## LAST VERSION: 1.7
 
 ## CREATED ON: 03/02/2022
 
-## UPDATED ON: 27/03/2022
+## UPDATED ON: 29/03/2022
 
 ## FILES USED
 - toids-remove.py (this script)
@@ -43,13 +43,17 @@ An idea developed from this article: https://www.vanimpe.eu/2019/09/24/tracking-
 
 ![image](https://user-images.githubusercontent.com/47757757/160293018-15acd81e-6e72-43c0-9d17-1df80283038c.png)
 
-![image](https://user-images.githubusercontent.com/47757757/160292993-367a606c-30fc-4ebf-948f-76d0d51b5f14.png)
+![image](https://user-images.githubusercontent.com/47757757/160706295-54d3b32b-e7ec-45d8-af36-036c94d662c3.png)
 
+![image](https://user-images.githubusercontent.com/47757757/160706477-55069eb9-73a4-4908-9719-a435eab9d3c9.png)
 
 https://user-images.githubusercontent.com/47757757/160293805-00fc37a2-87ca-46a9-b6c6-40a83c52cca2.mp4
 
 
 ## CHANGELOG
+
+### v 1.7 (29/03/2022):
+- Added sightings add based on reputation results.
 
 ### v 1.6 (27/03/2022):
 - Minor changes to the code;

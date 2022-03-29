@@ -1,9 +1,9 @@
 [![LZappy87 - toids_remove](https://img.shields.io/static/v1?label=LZappy87&message=toids_remove&color=blue&logo=github)](https://github.com/LZappy87/toids_remove "Go to GitHub repo")
-![LastCommit](https://img.shields.io/github/last-commit/LZappy87/toids_remove)
-![Languages](https://img.shields.io/github/languages/top/LZappy87/toids_remove)
-[![CodeFactor.io](https://img.shields.io/codefactor/grade/github/LZappy87/toids_remove)](https://www.codefactor.io/repository/github/lzappy87/toids_remove/overview/main)
 [![License](https://img.shields.io/badge/License-GPL--3.0_License-blue)](/LICENSE)
+[![CodeFactor.io](https://img.shields.io/codefactor/grade/github/LZappy87/toids_remove)](https://www.codefactor.io/repository/github/lzappy87/toids_remove/overview/main)
+![Languages](https://img.shields.io/github/languages/top/LZappy87/toids_remove)
 [![issues - toids_remove](https://img.shields.io/github/issues/LZappy87/toids_remove)](https://github.com/LZappy87/toids_remove/issues)
+![LastCommit](https://img.shields.io/github/last-commit/LZappy87/toids_remove)
 
 [![stars - toids_remove](https://img.shields.io/github/stars/LZappy87/toids_remove?style=social)](https://github.com/LZappy87/toids_remove)
 [![forks - toids_remove](https://img.shields.io/github/forks/LZappy87/toids_remove?style=social)](https://github.com/LZappy87/toids_remove)

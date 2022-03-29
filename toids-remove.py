@@ -565,8 +565,6 @@ elif args.mode == "rem":
 			misp.update_attribute( { 'uuid': attribute_uuid, 'to_ids': 0})
 			misp.publish(event_id)
 			
-		# TODO: Verbose mode
-		
 		# OLD output (DEPRECATED)
 		# print('[EventID ' + event_id + '] Tag removed from ' + attribute_value)
 		

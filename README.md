@@ -63,7 +63,7 @@ https://user-images.githubusercontent.com/47757757/160293805-00fc37a2-87ca-46a9-
 ## CHANGELOG
 
 ### v 1.7 (29/03/2022):
-- Added sightings add based on reputation results.
+- Added sightings based on reputation results.
 
 ### v 1.6 (27/03/2022):
 - Minor changes to the code;

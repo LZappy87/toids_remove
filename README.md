@@ -65,6 +65,8 @@ https://user-images.githubusercontent.com/47757757/160293805-00fc37a2-87ca-46a9-
 ### v 1.8 (06/04/2022):
 - Adding Sightings functionality into Reputation mode, still in progress...
 
+![image](https://user-images.githubusercontent.com/47757757/162072456-e2ec2117-cf68-4aa6-8505-4870610c54a9.png)
+
 ### v 1.7 (29/03/2022):
 - Added sightings based on reputation results.
 

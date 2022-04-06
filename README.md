@@ -12,11 +12,11 @@
 
 ## CREATED BY: LZappy87
 
-## LAST VERSION: 1.7
+## LAST VERSION: 1.8
 
 ## CREATED ON: 03/02/2022
 
-## UPDATED ON: 29/03/2022
+## UPDATED ON: 06/04/2022
 
 ## FILES USED
 - toids-remove.py (this script)
@@ -61,6 +61,9 @@ https://user-images.githubusercontent.com/47757757/160293805-00fc37a2-87ca-46a9-
 
 
 ## CHANGELOG
+
+### v 1.8 (06/04/2022):
+- Adding Sightings functionality into Reputation mode, still in progress...
 
 ### v 1.7 (29/03/2022):
 - Added sightings based on reputation results.

@@ -2,9 +2,9 @@
 ################################
 # NAME: MISP IDS Tag Remover for old entries
 # CREATED BY: LZappy87
-# ACTUAL VERSION: 1.8
+# ACTUAL VERSION: 2.0
 # CREATED ON: 03/02/2022
-# UPDATED ON: 06/04/2022
+# UPDATED ON: 07/04/2022
 # FILES USED: 
 # - toids-remove.py (this script)
 # - keys.py (the configuration file)
@@ -22,7 +22,9 @@
 #	some events based on tags (like APT);
 # - [--mode reputation] Removing IDS tags based on information gathered from selected vendors through the VirusTotal, AbuseIPDB and Greynoise API in the time range specified with 
 #	the arguments --mintime and --maxtime.
-# NEW: now with the option to add only sightings or add sightings + removal
+# With Reputation Mode now you can use the following commands
+# - [--sightsonly] no IDS tag will be removed, generate sightings\false positive based on reputation datasets
+# - [--sightsrem] remove IDS tags based on total sightings\false positive percentage
 ################################
 ######### SCRIPT START #########
 ################################
@@ -84,7 +86,7 @@ finalaction = ""
 # VISUAL OUTPUT INITIALIZATION BLOCK
 # Generating tables for final visualization
 finaloutputrep = PrettyTable()
-finaloutputrep.field_names = ['EventID','Status','MISP Sightings','Attribute','Type','Score','VT Tags','AbuseIPDB','Greynoise','Info']
+finaloutputrep.field_names = ['EventID','Status','MISP Sightings','Attribute','Type','Score','VT Tags','AbuseIPDB','GR Categorization','Is Noisy?','GR Riot']
 finaloutputrem = PrettyTable()
 finaloutputrem.field_names = ['EventID','Status','Attribute','Type']
 
@@ -95,7 +97,10 @@ prog="toids_remove.py",
 epilog='''This script it's used to disable the attribute 'to_ids' on MISP events based on two modes:
 	- [--mode rem] Removing IDS tags from events based only on time range;
 	- [--mode reputation] Removing IDS tags based on information gathered from selected vendors through the VirusTotal\AbuseIPDB\Greynoise API.
-In both cases you can use --mintime and --maxtime to adjust time range, options like tag exclusion, vendor list for VTotal and other can be changed by modifing the keys.py file.''',
+With Reputation Mode now you can use the following commands
+	- [--sightsonly] no IDS tag will be removed, generate sightings\\false positive based on reputation datasets
+	- [--sightsrem] remove IDS tags based on total sightings\\false positive percentage
+You can use --mintime and --maxtime to adjust time range, other options can be changed by modifing the keys.py file.''',
 formatter_class=argparse.RawTextHelpFormatter)
 
 # First argument: --mode
@@ -122,12 +127,20 @@ parser.add_argument(
 	help="Set max time (in s/m/d) - Default 365d (1 Year)")
 
 # Fourth Argument: --sightsonly
-# Generate only sightings, no tags will be removed
+# Generate only sightings, no tags will be removed (usable ONLY with reputation mode)
 parser.add_argument(
 	'--sightsonly',
 	metavar="<bool>",
 	type=bool,
-	help="True: add only sightings | False: add sightings and remove if score meet")
+	help="If true modify only sightings on attribute, no removal (to use with --mode reputation)")
+
+# Fifth Argument: --sightsrem
+# Remove IDS tag based on sightings (usable ONLY with reputation mode)
+parser.add_argument(
+	'--sightsrem',
+	metavar="<bool>",
+	type=bool,
+	help="If true remove IDS tag based on sightings\\false positive percentage (to use with --mode reputation)")
 
 # Parsing the arguments in input
 args = parser.parse_args()
@@ -168,6 +181,15 @@ if re.match("^[0-9]{1,4}[d,m,s]$", str(mintime)) and re.match("^[0-9]{1,4}[d,m,s
 	pass
 else:
 	print("Parameter in mintime\maxtime wrong.")
+	quit()
+
+# Exit if rem mode and sightings mode are in the same command (usable only in reputation mode)
+if args.mode == "rem" and (args.sightsonly == True or args.sightsonly == False or args.sightsrem == True or args.sightsrem == False):
+	print("Sightings mode avaiable only on reputation mode, the script will now exit.")
+	quit()
+# Exit if both sightings mode are in the same command (usable only in reputation mode)
+elif args.sightsonly == True and args.sightsrem == True:
+	print("Only one sightings mode can be choose, the script will now exit.")
 	quit()
 
 # Disabling warning linked to connection attempts towards MISP instances with self-signed certificates
@@ -255,9 +277,8 @@ start_time = time.perf_counter()
 # REPUTATION MODE: remove IDS tags based on VirusTotal\AbuseIPDB\Greynoise datasets
 # Note: AbuseIPDB and Greynoise part works only for IP indicators
 # STATUS: 100% (COMPLETE)
-# SIGHTINGS MODE: withing reputation mode, choose to add only sightings or execute the original reputation mode
-# STATUS: 30% (ONGOING)
-# TO DO: removal based on sightings only (historical + actual)
+# SIGHTINGS MODE: within reputation mode, choose to add only sightings or remove IDS tags based on sightings\false positive percentage
+# STATUS: 100% (COMPLETE)
 if args.mode == "reputation":
 	
 	# Importing arguments from keys.py
@@ -317,7 +338,15 @@ if args.mode == "reputation":
 		print('Check if all the informations are present and set correctly into the keys.py, the script will now exit...')
 		quit()
 	
-	print('Removing IDS attribute on events with ' + args.mode + 'mode (score < ' + str(set_score) + ') and time range ' + mintime + ' : ' + maxtime + '...' )
+	if args.sightsonly == True:
+		print('Sightings reputation mode (categorize) selected: no IDS tags will be removed, instead sightings will be populated based on score achieved, time range: ' + mintime + ' : ' + maxtime + '...')
+		time.sleep(3)
+	elif args.sightsrem == True:
+		print('Sightings reputation mode (removal) selected: IDS tags will be removed based on sightings\\false positive percentage,  time range: ' + mintime + ' : ' + maxtime + '...')
+		time.sleep(3)
+	else:
+		print('Elaborating attributes with ' + args.mode + ' standard mode (score < ' + str(set_score) + ') and time range ' + mintime + ' : ' + maxtime + '...')
+		time.sleep(3)		
 	
 	# Extracting attributes from MISP
 	for attribute in result['Attribute']:
@@ -463,55 +492,29 @@ if args.mode == "reputation":
 			if vtotaltagsfinal == "set()":
 				vtotaltagsfinal = "No Tags"
 			
-			# Adding sight on attribute (type = 1, sighting)			
+			# Adding sight on attribute (type = 0, sighting)			
 			if args.sightsonly == True:
-				finalaction = "None"
+				finalaction = "Sights"
 			else:
 				finalaction = "Not Removed"			
 			with suppress_stdout():
 				misp.add_sighting({"values": attribute_value, "type": 0, "source": "toids_score_high"}, attribute_id)
+				sgtp += 1
 								
-			# OLD output (DEPRECATED)
-			# print('[EventID ' + event_id + '] Tag not removed from ' + attribute_value + ', total score: ' + str(score) + '
-			# \ , VirusTotal: ' + vtotaltagsfinal + ', AbuseIPDB: ' + str(abipdb) + ', Greynoise: ' + str(grclassified) + ' (' + str(grname) + ')')
-			
-			# Calculate number of sightings for the attribute
-			for sg in sightings:
-				if '0' in sg['Sighting']['type']:
-					sgtp+= 1
-				elif '1' in sg['Sighting']['type']:
-					sgfp+= 1
-			sightingscore = "Sight: " + str(sgtp) + ", False-Pos: " + str(sgfp)
-			
-			# NEW output (PrettyTables)
-			finaloutputrep.add_row([event_id,finalaction,sightingscore,attribute_value,attribute_type,str(score),vtotaltagsfinal,str(abipdb),str(grclassified),str(grname)])
-						
-			vtotaltags = []
-			vtotaltagsfinal = ''
-			if actualid == 0:
-				actualid = event_id
-				print("Elaboration of event " + actualid + " started")
-			elif actualid == event_id:
-				pass
-			elif actualid != event_id or actualid > 0:
-				print("Elaboration of event " + actualid + " finished")
-				actualid = eventid
-				print("Elaboration of event " + actualid + " started")
-			
 		else:
 			# Console output suppression
 			with suppress_stdout():
 				# Remove IDS tag, only if sightsonly == False
 				if args.sightsonly == True:
-					finalaction = "None"
-					pass
+					finalaction = "False-Pos"
 				else:
 					misp.update_attribute( { 'uuid': attribute_uuid, 'to_ids': 0})
 					finalaction = "Removed"
+					misp.publish(event_id)
 				
-				# Adding sight on attribute (type = 0, false_positive)
+				# Adding sight on attribute (type = 1, false_positive)
 				misp.add_sighting({"values": attribute_value, "type": 1, "source": "toids_score_low"}, attribute_id)
-				misp.publish(event_id)
+				sgfp += 1
 			i += 1
 			
 			# Take only distinct tags, if no tags present set "No Tags" as value
@@ -519,37 +522,60 @@ if args.mode == "reputation":
 			if vtotaltagsfinal == "set()":
 				vtotaltagsfinal = "No Tags"
 			
-			# OLD output (DEPRECATED)
-			# print('[EventID ' + event_id + '] Tag removed from ' + attribute_value + ', total score: ' + str(score) + '
-			# \ , VirusTotal: ' + vtotaltagsfinal + ', AbuseIPDB: ' + str(abipdb) + ', Greynoise: ' + str(grclassified) + ' (' + str(grname) + ')')
+		# Calculate number of sightings for the attribute
+		for sg in sightings:
+			if '0' in sg['Sighting']['type']:
+				sgtp+= 1
+			elif '1' in sg['Sighting']['type']:
+				sgfp+= 1
+		
+		# If sightsrem is invoked, remove based on sightings\false positive percentage
+		if args.sightsrem == True:
+			if sgtp == 0:
+				finalaction = "Not Removed"
+			elif sgfp == 0:
+				misp.update_attribute( { 'uuid': attribute_uuid, 'to_ids': 0})
+				finalaction = "Removed"
+				misp.publish(event_id)
+			elif sgtp > sgfp:
+				perc = round((sgfp / sgtp) * 100,0)
+				if perc > 50:
+					misp.update_attribute( { 'uuid': attribute_uuid, 'to_ids': 0})
+					finalaction = "Removed"
+					misp.publish(event_id)
+				else:
+					finalaction = "Not Removed"
+			elif sgfp > sgtp:
+				perc = round((sgtp / sgfp) * 100,0)
+				if perc > 50:
+					finalaction = "Not Removed"
+				else:
+					misp.update_attribute( { 'uuid': attribute_uuid, 'to_ids': 0})
+					finalaction = "Removed"
+					misp.publish(event_id)
+				
+		sightingscore = "Sight: " + str(sgtp) + ", False-Pos: " + str(sgfp)
+		
+		# NEW output (PrettyTables)
+		finaloutputrep.add_row([event_id,finalaction,sightingscore,attribute_value,attribute_type,str(score),vtotaltagsfinal,str(abipdb),str(grclassified),str(grnoise),str(grname)])
+		
+		# Start\end operations on EventID notification
+		if actualid == 0:
+			actualid = event_id
+			print("Elaboration of event " + actualid + " started")
+		elif actualid == event_id:
+			pass
+		elif actualid != event_id or actualid > 0:
+			print("Elaboration of event " + actualid + " finished (" + str(i) + " attributes elaborated)")
+			actualid = eventid
+			print("Elaboration of event " + actualid + " started")
 			
-			#Calculate number of sightings for the attribute
-			for sg in sightings:
-				if '0' in sg['Sighting']['type']:
-					sgtp+= 1
-				elif '1' in sg['Sighting']['type']:
-					sgfp+= 1
-			sightingscore = "Sight: " + str(sgtp) + ", False-Pos: " + str(sgfp)
-			
-			# NEW output (PrettyTables)
-			finaloutputrep.add_row([event_id,finalaction,sightingscore,attribute_value,attribute_type,str(score),vtotaltagsfinal,str(abipdb),str(grclassified),str(grname)])
-			
-			# Start\end operations on EventID notification
-			if actualid == 0:
-				actualid = event_id
-				print("Elaboration of event " + actualid + " started")
-			elif actualid == event_id:
-				pass
-			elif actualid != event_id or actualid > 0:
-				print("Elaboration of event " + actualid + " finished (" + str(i) + " attributes changed)")
-				actualid = eventid
-				print("Elaboration of event " + actualid + " started")
-			vtotaltags = []
-			vtotaltagsfinal = ''
+		vtotaltags = []
+		vtotaltagsfinal = ''
 		
 # REMOVE MODE: remove IDS tags based only on time range
 # STATUS: 100% (COMPLETE)
-elif args.mode == "rem":		
+elif args.mode == "rem":
 
 	# Import arguments from keys.py
 	# misp_excluded_tags: this is used as a filter to exclude events with a certain tag(s)
@@ -571,10 +597,10 @@ elif args.mode == "rem":
 
 	# Generic Exception Handling, Same here, to be revised...
 	except Exception:
-		print('Check if all the informations needed are into the keys.py file, the script will now exit...')
+		print('Check if all the informations needed are into the keys.py file, the script will now exit.')
 		quit()
 
-	print('Removing IDS attribute on events with ' + args.mode + ' mode and time range ' + mintime + ' : ' + maxtime + '...' )
+	print('Removing IDS attribute on events (' + args.mode + ' mode), time range ' + mintime + ' : ' + maxtime + '...' )
 
 	# Iterate attribute to find and disable the IDS tags
 	for attribute in result['Attribute']:
@@ -582,54 +608,54 @@ elif args.mode == "rem":
 		attribute_uuid = attribute['uuid']
 		event_id = attribute['event_id']
 		attribute_value = attribute['value']
+		attribute_type = attribute['type']
 
 		# As said previously: no futile output allowed
 		with suppress_stdout():
 			misp.update_attribute( { 'uuid': attribute_uuid, 'to_ids': 0})
 			misp.publish(event_id)
 			
-		# OLD output (DEPRECATED)
-		# print('[EventID ' + event_id + '] Tag removed from ' + attribute_value)
-		
 		# NEW output (PrettyTables)
-		finaloutputrem.add_row([event_id, "Removed", attribute_value,attribute_type])
+		finaloutputrem.add_row([event_id, "Removed", attribute_value, attribute_type])
 		if actualid == 0:
 			actualid = event_id
-			print("Tag IDS removal on event " + actualid + " started")
+			print("Operations on event " + actualid + " started")
 		elif actualid == event_id:
 			pass
 		elif actualid != event_id or actualid > 0:
-			print("Tag IDS removal on event " + actualid + " finished (" + str(i) + " attributes changed)")
+			print("Operations on event " + actualid + " finished (" + str(i) + " attributes elaborated)")
 			actualid = eventid
-			print("Tag IDS removal on event " + actualid + " started")
+			print("Operations on event " + actualid + " started")
 		
 		
 
 # Stop timer
-print("Tag IDS removal on event " + actualid + " finished (" + str(i) + " attributes changed)")
+print("Operations on event " + str(actualid) + " finished (" + str(i) + " attributes elaborated)")
 print("All events processed.")
 end_time = time.perf_counter()
-print('###############')
 
 # Show results regading the action done based on mode selected
-if args.mode == 'reputation':
+if len(event_id) == 0:
+	pass
+elif args.mode == 'reputation':
+	print('###############')
 	print(finaloutputrep)
 elif args.mode == 'rem':
+	print('###############')
 	print(finaloutputrem)
 
 print('###############')
 print(f'Operations finished in {end_time - start_time:0.2f} seconds.')
 print('###############')
-print('Total Events modified:',len(event_id))
+print('Total Events impacted:',len(event_id))
 print('Total operations:', i)
 print('###############')
 
 # Republishing all the modified events (if present)
-if len(event_id) > 0:
-	print('Events republished: ', len(event_id))
-	
-else:
+if len(event_id) == 0 or args.sightsonly == True:
 	print('No need to republish events, no modifications done.')
+elif len(event_id) > 0:
+	print('Events republished: ', len(event_id))
 
 # Remove temporary files (because why not?)
 print('Cleaning temporary files...')
